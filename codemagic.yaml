@@ -13,15 +13,18 @@ workflows:
           touch .env.example
           touch .env
 
-          # 2. استخراج کلید امضای اصلی از متغیر محیطی
-          echo "$CM_KEYSTORE" | base64 --decode > "$CM_BUILD_DIR/my-upload-key.jks"
+          # 2. استخراج صحیح و تمیز فایل کلید بدون شکستگی خطوط
+          printf '%s' "$CM_KEYSTORE" | tr -d '\r\n ' | base64 -D -o "$CM_BUILD_DIR/my-upload-key.jks"
 
-          # 3. دانلود و تنظیم Gradle
+          # 3. تست سلامت فایل کلید (اگر خراب باشد همینجا مشخص می‌شود)
+          keytool -list -v -keystore "$CM_BUILD_DIR/my-upload-key.jks" -storepass "$STORE_PASSWORD"
+
+          # 4. دانلود و تنظیم Gradle
           curl -sL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o gradle-9.3.1-bin.zip
           unzip -q gradle-9.3.1-bin.zip
           export PATH=$(pwd)/gradle-9.3.1/bin:$PATH
 
-          # 4. ساخت نسخه نهایی Release با کلید اختصاصی
+          # 5. ساخت نسخه نهایی Release
           gradle assembleRelease
     artifacts:
       - "**/build/outputs/apk/release/*.apk"

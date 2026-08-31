@@ -6,13 +6,12 @@ workflows:
     scripts:
       - name: Setup Environment & Build Release APK
         script: |
-          # 1. ساخت فایل‌های .env جهت جلوگیری از خطای Plugin
           touch .env.example
           touch .env
-
-          # 2. ساخت یک کلید امضای رسمی، نو و 100% سالم مستقیماً روی سرور
+          rm -f "$CM_BUILD_DIR/my-upload-key.jks"
           keytool -genkeypair -v \
-            -keystore my-upload-key.jks \
+            -keystore "$CM_BUILD_DIR/my-upload-key.jks" \
+            -storetype PKCS12 \
             -alias upload \
             -keypass ali13821382ali \
             -storepass ali13821382ali \
@@ -20,13 +19,10 @@ workflows:
             -keysize 2048 \
             -validity 10000 \
             -dname "CN=Ali Ziaee, OU=0003, O=0003 Player, L=Tehran, ST=Tehran, C=IR"
-
-          # 3. دانلود و تنظیم Gradle
           curl -sL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o gradle-9.3.1-bin.zip
           unzip -q gradle-9.3.1-bin.zip
           export PATH=$(pwd)/gradle-9.3.1/bin:$PATH
-
-          # 4. بیلد نهایی Release با همان کلید
-          gradle assembleRelease
+          gradle assembleRelease --no-daemon
     artifacts:
       - "**/build/outputs/apk/release/*.apk"
+      - "my-upload-key.jks"

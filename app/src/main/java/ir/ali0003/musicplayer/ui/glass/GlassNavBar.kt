@@ -162,7 +162,7 @@ fun GlassBottomNavBar(
     val items = remember {
         listOf(
             NavItem("Home", "Home", Icons.Default.Home),
-            NavItem("Explore", "Explore", Icons.Default.Explore),
+            NavItem("Explore", "Explore", Icons.Default.Leaderboard),
             NavItem("Library", "Library", Icons.Default.QueueMusic),
             NavItem("Downloader", "Tools", Icons.Default.HomeRepairService),
             NavItem("Settings", "Settings", Icons.Default.Settings)

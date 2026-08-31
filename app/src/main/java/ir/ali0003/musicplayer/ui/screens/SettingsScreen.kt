@@ -1,5 +1,8 @@
 package ir.ali0003.musicplayer.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,15 +20,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ir.ali0003.musicplayer.model.AppUpdateInfo
 import ir.ali0003.musicplayer.model.GlassTheme
 import ir.ali0003.musicplayer.model.ListItemSize
 import ir.ali0003.musicplayer.ui.glass.GlassButton
 import ir.ali0003.musicplayer.ui.glass.GlassCard
 import ir.ali0003.musicplayer.ui.glass.GlassSlider
+import ir.ali0003.musicplayer.ui.glass.UpdateAvailableDialog
+import ir.ali0003.musicplayer.ui.glass.UpdateCheckingDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(
@@ -45,6 +56,104 @@ fun SettingsScreen(
     hiddenFoldersCount: Int = 0,
     scrollToTopTrigger: Int = 0
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var availableUpdateInfo by remember { mutableStateOf<AppUpdateInfo?>(null) }
+
+    val (versionName, versionCode) = remember(context) {
+        try {
+            val pInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            }
+            val vName = pInfo.versionName ?: "1.0"
+            val vCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                pInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                pInfo.versionCode.toLong()
+            }
+            Pair(vName, vCode)
+        } catch (e: Exception) {
+            Pair("1.0", 1L)
+        }
+    }
+
+    fun checkForUpdates() {
+        if (isCheckingUpdate) return
+        isCheckingUpdate = true
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val client = okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+
+                val request = okhttp3.Request.Builder()
+                    .url("https://chat0003.ir/0003player/version.json")
+                    .header("User-Agent", "0003Player-Android")
+                    .get()
+                    .build()
+
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) {
+                    withContext(Dispatchers.Main) {
+                        isCheckingUpdate = false
+                        Toast.makeText(context, "Unable to check for updates. Please try again later.", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
+                val body = response.body?.string() ?: ""
+                val json = org.json.JSONObject(body)
+
+                val latestCode = json.optInt("latest_version_code", json.optInt("version_code", json.optInt("versionCode", 0)))
+                val latestName = json.optString("latest_version_name", json.optString("version_name", json.optString("versionName", "")))
+                val downloadUrl = json.optString("download_url", json.optString("downloadUrl", ""))
+
+                val changelogList = mutableListOf<String>()
+                val changelogArray = json.optJSONArray("change_log") ?: json.optJSONArray("changelog")
+                if (changelogArray != null) {
+                    for (i in 0 until changelogArray.length()) {
+                        val entry = changelogArray.optString(i)
+                        if (entry.isNotBlank()) changelogList.add(entry.trim())
+                    }
+                } else {
+                    val changelogStr = json.optString("change_log", json.optString("changelog", ""))
+                    if (changelogStr.isNotBlank()) {
+                        changelogList.addAll(
+                            changelogStr.split("\n")
+                                .map { it.trim().removePrefix("-").removePrefix("•").trim() }
+                                .filter { it.isNotEmpty() }
+                        )
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    isCheckingUpdate = false
+                    if (latestCode > versionCode) {
+                        availableUpdateInfo = AppUpdateInfo(
+                            latestVersionCode = latestCode,
+                            latestVersionName = latestName.ifBlank { "1.0" },
+                            downloadUrl = downloadUrl,
+                            changelog = changelogList
+                        )
+                    } else {
+                        Toast.makeText(context, "You have the latest version (v$versionName).", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    isCheckingUpdate = false
+                    Toast.makeText(context, "Unable to check for updates. Please try again later.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     val listState = rememberLazyListState()
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger > 0) {
@@ -612,5 +721,107 @@ fun SettingsScreen(
                 }
             }
         }
+
+        // Section 5: About & Updates
+        item {
+            Text(
+                text = "ABOUT & UPDATES",
+                color = theme.subtextColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                GlassCard(
+                    onClick = { checkForUpdates() },
+                    theme = theme,
+                    modifier = Modifier.fillMaxWidth(),
+                    testTag = "settings_check_updates_card"
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SystemUpdate,
+                                contentDescription = null,
+                                tint = theme.accentColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column {
+                                Text(
+                                    text = "Check for Updates",
+                                    color = theme.textColor,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "Check for newer versions and features",
+                                    color = theme.subtextColor,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Check for Updates",
+                            tint = theme.subtextColor
+                        )
+                    }
+                }
+            }
+        }
+
+        // Dynamic Version Footer
+        item {
+            Text(
+                text = "Version $versionName (Build $versionCode)",
+                color = theme.subtextColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp)
+            )
+        }
+    }
+
+    if (isCheckingUpdate) {
+        UpdateCheckingDialog(
+            theme = theme,
+            onDismiss = { isCheckingUpdate = false }
+        )
+    }
+
+    availableUpdateInfo?.let { updateInfo ->
+        UpdateAvailableDialog(
+            currentVersionName = versionName,
+            updateInfo = updateInfo,
+            onDownload = { url ->
+                if (url.isNotBlank()) {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Could not open download link.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            onDismiss = { availableUpdateInfo = null },
+            theme = theme
+        )
     }
 }

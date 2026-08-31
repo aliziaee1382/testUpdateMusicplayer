@@ -119,7 +119,7 @@ fun ExploreScreen(
         item {
             Column(modifier = Modifier.padding(top = 12.dp)) {
                 Text(
-                    text = "Explore & Playback Stats",
+                    text = "My Records & Stats",
                     color = theme.textColor,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold

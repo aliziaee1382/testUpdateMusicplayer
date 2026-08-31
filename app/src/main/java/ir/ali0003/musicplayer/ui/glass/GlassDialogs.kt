@@ -40,6 +40,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import ir.ali0003.musicplayer.data.local.ScanProgress
+import ir.ali0003.musicplayer.model.AppUpdateInfo
 import ir.ali0003.musicplayer.model.EqualizerPreset
 import ir.ali0003.musicplayer.model.GlassTheme
 import ir.ali0003.musicplayer.model.Playlist
@@ -2458,5 +2459,220 @@ fun HiddenFoldersDialog(
         }
     }
 }
+
+@Composable
+fun UpdateCheckingDialog(
+    theme: GlassTheme,
+    onDismiss: () -> Unit = {}
+) {
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.loading))
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = LottieConstants.IterateForever
+    )
+
+    AnimatedGlassDialog(onDismissRequest = onDismiss) {
+        GlassBox(
+            theme = theme,
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .padding(8.dp),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (composition != null) {
+                    LottieAnimation(
+                        composition = composition,
+                        progress = { progress },
+                        modifier = Modifier.size(64.dp)
+                    )
+                } else {
+                    CircularProgressIndicator(
+                        color = theme.accentColor,
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Checking for updates...",
+                    color = theme.textColor,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun UpdateAvailableDialog(
+    currentVersionName: String,
+    updateInfo: AppUpdateInfo,
+    onDownload: (String) -> Unit,
+    onDismiss: () -> Unit,
+    theme: GlassTheme
+) {
+    AnimatedGlassDialog(onDismissRequest = onDismiss) {
+        GlassBox(
+            theme = theme,
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .padding(8.dp),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(theme.accentColor.copy(alpha = 0.18f))
+                            .border(1.dp, theme.accentColor.copy(alpha = 0.35f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SystemUpdate,
+                            contentDescription = null,
+                            tint = theme.accentColor,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "New Update Available",
+                            color = theme.textColor,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "A newer version of 0003 Player is ready",
+                            color = theme.subtextColor,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Version comparison box (subtle frosted box)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(theme.accentColor.copy(alpha = 0.1f))
+                        .border(1.dp, theme.accentColor.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
+                        .padding(vertical = 12.dp, horizontal = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Current: v$currentVersionName",
+                            color = theme.subtextColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "•",
+                            color = theme.accentColor,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Latest: v${updateInfo.latestVersionName}",
+                            color = theme.accentColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                if (updateInfo.changelog.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "What's New:",
+                        color = theme.textColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 160.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        updateInfo.changelog.forEach { change ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Text(
+                                    text = "• ",
+                                    color = theme.accentColor,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = change,
+                                    color = theme.textColor.copy(alpha = 0.9f),
+                                    fontSize = 13.sp,
+                                    lineHeight = 18.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Actions
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Later", color = theme.subtextColor)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    GlassButton(
+                        text = "Download Update",
+                        onClick = {
+                            onDownload(updateInfo.downloadUrl)
+                            onDismiss()
+                        },
+                        isHighlighted = true,
+                        theme = theme,
+                        testTag = "download_update_button"
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 

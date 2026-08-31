@@ -1,6 +1,7 @@
 package ir.ali0003.musicplayer.ui.glass
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.MediaCodec
@@ -10,6 +11,8 @@ import android.media.MediaMuxer
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -71,9 +74,12 @@ fun SoundToolsScreen(
     var identifiedResultForDialog by remember { mutableStateOf<MusicIdentifyResult?>(null) }
     var isSearchingAudio by remember { mutableStateOf(false) }
     var isAnalyzingVideo by remember { mutableStateOf(false) }
+    var isConvertingVideoToMusic by remember { mutableStateOf(false) }
+    var convertedMusicFile by remember { mutableStateOf<File?>(null) }
+    var convertedMusicName by remember { mutableStateOf<String?>(null) }
     var searchStatusText by remember { mutableStateOf<String?>(null) }
 
-    // Video Picker Launcher
+    // Video Picker Launcher for Identification
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -113,6 +119,35 @@ fun SoundToolsScreen(
                         isAnalyzingVideo = false
                         searchStatusText = null
                         Toast.makeText(context, "Could not extract audio track from video.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    // Video to Music Converter Launcher
+    val convertVideoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            isConvertingVideoToMusic = true
+            convertedMusicFile = null
+            convertedMusicName = null
+            coroutineScope.launch(Dispatchers.IO) {
+                val fileName = "Audio_${System.currentTimeMillis()}.m4a"
+                val targetFile = File(context.cacheDir, fileName)
+                // Extract FULL audio track (no duration limit)
+                val success = extractFullAudioFromVideoUri(context, uri, targetFile)
+
+                withContext(Dispatchers.Main) {
+                    isConvertingVideoToMusic = false
+                    if (success && targetFile.exists() && targetFile.length() > 0) {
+                        convertedMusicFile = targetFile
+                        convertedMusicName = fileName
+                        Toast.makeText(context, "Audio extracted! Click download to save.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        targetFile.delete()
+                        Toast.makeText(context, "Failed to extract audio from video.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -196,6 +231,32 @@ fun SoundToolsScreen(
             // Section 3: "video To music" with upload -> arrow -> download buttons
             VideoToMusicCard(
                 theme = theme,
+                isConverting = isConvertingVideoToMusic,
+                hasConvertedFile = convertedMusicFile != null && convertedMusicFile?.exists() == true,
+                onUploadClicked = {
+                    convertVideoPickerLauncher.launch("video/*")
+                },
+                onDownloadClicked = {
+                    val fileToSave = convertedMusicFile
+                    val nameToSave = convertedMusicName ?: "Audio_${System.currentTimeMillis()}.m4a"
+                    if (fileToSave != null && fileToSave.exists() && fileToSave.length() > 0) {
+                        coroutineScope.launch(Dispatchers.IO) {
+                            val saved = saveAudioFileToMusicLibrary(context, fileToSave, nameToSave)
+                            fileToSave.delete()
+                            withContext(Dispatchers.Main) {
+                                convertedMusicFile = null
+                                convertedMusicName = null
+                                if (saved) {
+                                    Toast.makeText(context, "Track saved to Music library!", Toast.LENGTH_LONG).show()
+                                } else {
+                                    Toast.makeText(context, "Failed to save track to Music library.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    } else {
+                        Toast.makeText(context, "Please upload a video first to extract audio.", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -264,34 +325,62 @@ private fun LiveRecordingCapsule(
     }
 
     val scale by animateFloatAsState(
-        targetValue = if (isHolding) 0.96f else 1.0f,
+        targetValue = if (isHolding) 0.98f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
         ),
-        label = "capsuleScale"
+        label = "cardScale"
     )
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulseAnim")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.85f,
+    val pulseRingScale1 by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.45f,
         animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
         ),
-        label = "pulseAlpha"
+        label = "pulseRingScale1"
+    )
+    val pulseRingAlpha1 by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 0.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulseRingAlpha1"
+    )
+
+    val pulseRingScale2 by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulseRingScale2"
+    )
+    val pulseRingAlpha2 by infiniteTransition.animateFloat(
+        initialValue = 0.7f,
+        targetValue = 0.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulseRingAlpha2"
     )
 
     val softGreenFill = remember(theme) {
-        Color(0x3310B981)
+        Color(0x2E10B981)
     }
 
     val softGreenBorder = remember(theme) {
         Color(0x6634D399)
     }
 
-    val capsuleShape = RoundedCornerShape(32.dp)
+    val cardShape = RoundedCornerShape(28.dp)
 
     Box(
         modifier = modifier
@@ -299,20 +388,20 @@ private fun LiveRecordingCapsule(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(capsuleShape)
-            .background(if (isHolding) softGreenFill.copy(alpha = pulseAlpha) else softGreenFill)
+            .clip(cardShape)
+            .background(if (isHolding) softGreenFill.copy(alpha = 0.35f) else softGreenFill)
             .border(
                 width = 1.dp,
                 brush = Brush.horizontalGradient(
                     listOf(
                         softGreenBorder,
-                        Color.White.copy(alpha = 0.2f),
+                        Color.White.copy(alpha = 0.25f),
                         softGreenBorder
                     )
                 ),
-                shape = capsuleShape
+                shape = cardShape
             )
-            .pointerInput(Unit) {
+            .pointerInput(isSearching) {
                 detectTapGestures(
                     onPress = {
                         val hasPermission = ContextCompat.checkSelfPermission(
@@ -398,47 +487,131 @@ private fun LiveRecordingCapsule(
                     }
                 )
             }
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(horizontal = 24.dp, vertical = 28.dp)
             .testTag("sound_tools_mic_capsule"),
         contentAlignment = Alignment.Center
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = when {
-                    isHolding -> "listening... release when ready"
-                    isSearching -> "identifying music..."
-                    else -> "top and hold to search"
-                },
-                color = theme.textColor,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+            // Line 1: Status / Instruction Text
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = when {
+                        isHolding -> "listening... release when ready"
+                        isSearching -> "identifying music..."
+                        else -> "tap and hold to search"
+                    },
+                    color = when {
+                        isHolding -> Color(0xFF34D399)
+                        isSearching -> theme.accentColor
+                        else -> theme.textColor
+                    },
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
+                )
 
+                AnimatedVisibility(
+                    visible = isHolding,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Text(
+                        text = "Keep holding near the music source",
+                        color = theme.subtextColor,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            // Line 2: Large Circular Mic Button with expanding ripple animation
             Box(
                 modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(Color(0x3334D399))
-                    .border(1.dp, Color(0x6634D399), CircleShape),
+                    .size(110.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (isSearching) {
-                    CircularProgressIndicator(
-                        color = theme.accentColor,
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
+                // Expanding ripple rings when holding
+                if (isHolding) {
+                    Box(
+                        modifier = Modifier
+                            .size(84.dp)
+                            .graphicsLayer {
+                                scaleX = pulseRingScale1
+                                scaleY = pulseRingScale1
+                                alpha = pulseRingAlpha1
+                            }
+                            .clip(CircleShape)
+                            .background(Color(0xFF34D399))
                     )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = "Search by Audio",
-                        tint = theme.accentColor,
-                        modifier = Modifier.size(24.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(84.dp)
+                            .graphicsLayer {
+                                scaleX = pulseRingScale2
+                                scaleY = pulseRingScale2
+                                alpha = pulseRingAlpha2
+                            }
+                            .clip(CircleShape)
+                            .background(Color(0xFF10B981))
                     )
+                }
+
+                // Main 84dp Center Circle
+                Box(
+                    modifier = Modifier
+                        .size(84.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isHolding) {
+                                Brush.radialGradient(
+                                    listOf(
+                                        Color(0xFF10B981),
+                                        Color(0xFF059669)
+                                    )
+                                )
+                            } else {
+                                Brush.radialGradient(
+                                    listOf(
+                                        Color(0x4D34D399),
+                                        Color(0x2610B981)
+                                    )
+                                )
+                            }
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            brush = Brush.linearGradient(
+                                listOf(
+                                    Color(0xFF34D399),
+                                    Color.White.copy(alpha = 0.4f),
+                                    Color(0xFF059669)
+                                )
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSearching) {
+                        CircularProgressIndicator(
+                            color = Color(0xFF34D399),
+                            modifier = Modifier.size(36.dp),
+                            strokeWidth = 3.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "Search by Audio",
+                            tint = if (isHolding) Color.White else Color(0xFF34D399),
+                            modifier = Modifier.size(40.dp)
+                        )
+                    }
                 }
             }
         }
@@ -486,6 +659,10 @@ private fun FindMusicFromVideoCard(
 @Composable
 private fun VideoToMusicCard(
     theme: GlassTheme,
+    isConverting: Boolean,
+    hasConvertedFile: Boolean,
+    onUploadClicked: () -> Unit,
+    onDownloadClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val cardShape = RoundedCornerShape(24.dp)
@@ -513,10 +690,11 @@ private fun VideoToMusicCard(
         ) {
             // Upload capsule button
             CapsuleActionButton(
-                text = "upload",
-                icon = Icons.Default.Upload,
+                text = if (isConverting) "converting..." else "upload",
+                icon = if (isConverting) Icons.Default.HourglassEmpty else Icons.Default.Upload,
                 theme = theme,
-                onClick = { /* Placeholder for conversion upload */ },
+                onClick = onUploadClicked,
+                enabled = !isConverting,
                 modifier = Modifier.weight(1f),
                 testTag = "sound_tools_convert_upload_btn"
             )
@@ -526,23 +704,27 @@ private fun VideoToMusicCard(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(theme.accentColor.copy(alpha = 0.15f)),
+                    .background(
+                        if (hasConvertedFile) theme.accentColor.copy(alpha = 0.35f)
+                        else theme.accentColor.copy(alpha = 0.15f)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.ArrowForward,
                     contentDescription = "Convert",
-                    tint = theme.accentColor,
+                    tint = if (hasConvertedFile) theme.accentColor else theme.accentColor.copy(alpha = 0.6f),
                     modifier = Modifier.size(20.dp)
                 )
             }
 
             // Download capsule button
             CapsuleActionButton(
-                text = "download",
-                icon = Icons.Default.Download,
+                text = if (hasConvertedFile) "save track" else "download",
+                icon = if (hasConvertedFile) Icons.Default.CheckCircle else Icons.Default.Download,
                 theme = theme,
-                onClick = { /* Placeholder for conversion download */ },
+                onClick = onDownloadClicked,
+                enabled = !isConverting,
                 modifier = Modifier.weight(1f),
                 testTag = "sound_tools_convert_download_btn"
             )
@@ -622,6 +804,126 @@ private fun CapsuleActionButton(
                 fontWeight = FontWeight.SemiBold
             )
         }
+    }
+}
+
+/**
+ * Extracts the full audio track from a video Uri into an output .m4a file
+ * without duration limitations.
+ */
+private fun extractFullAudioFromVideoUri(
+    context: Context,
+    videoUri: Uri,
+    outputFile: File
+): Boolean {
+    val extractor = MediaExtractor()
+    var muxer: MediaMuxer? = null
+    try {
+        extractor.setDataSource(context, videoUri, null)
+        var audioTrackIndex = -1
+        var audioFormat: MediaFormat? = null
+
+        for (i in 0 until extractor.trackCount) {
+            val format = extractor.getTrackFormat(i)
+            val mime = format.getString(MediaFormat.KEY_MIME) ?: ""
+            if (mime.startsWith("audio/")) {
+                audioTrackIndex = i
+                audioFormat = format
+                break
+            }
+        }
+
+        if (audioTrackIndex < 0 || audioFormat == null) {
+            return false
+        }
+
+        extractor.selectTrack(audioTrackIndex)
+
+        if (outputFile.exists()) {
+            outputFile.delete()
+        }
+
+        muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+        val muxerAudioTrack = muxer.addTrack(audioFormat)
+        muxer.start()
+
+        val maxBufferSize = if (audioFormat.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
+            audioFormat.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE).coerceAtLeast(64 * 1024)
+        } else {
+            64 * 1024
+        }
+        val buffer = ByteBuffer.allocate(maxBufferSize)
+        val bufferInfo = MediaCodec.BufferInfo()
+
+        while (true) {
+            bufferInfo.offset = 0
+            bufferInfo.size = extractor.readSampleData(buffer, 0)
+            if (bufferInfo.size < 0) {
+                break
+            }
+            bufferInfo.presentationTimeUs = extractor.sampleTime
+            bufferInfo.flags = extractor.sampleFlags
+
+            muxer.writeSampleData(muxerAudioTrack, buffer, bufferInfo)
+            extractor.advance()
+        }
+        return true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return false
+    } finally {
+        try {
+            muxer?.stop()
+        } catch (ignored: Exception) {}
+        try {
+            muxer?.release()
+        } catch (ignored: Exception) {}
+        try {
+            extractor.release()
+        } catch (ignored: Exception) {}
+    }
+}
+
+/**
+ * Saves an extracted audio file directly into the device's public Music media collection
+ * so it immediately appears in all media players and local scans.
+ */
+private fun saveAudioFileToMusicLibrary(
+    context: Context,
+    sourceFile: File,
+    displayName: String
+): Boolean {
+    val resolver = context.contentResolver
+    val contentValues = ContentValues().apply {
+        put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
+        put(MediaStore.Audio.Media.TITLE, displayName.substringBeforeLast("."))
+        put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC)
+            put(MediaStore.Audio.Media.IS_PENDING, 1)
+        }
+    }
+
+    val uri = resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, contentValues) ?: return false
+
+    return try {
+        resolver.openOutputStream(uri)?.use { outputStream ->
+            sourceFile.inputStream().use { inputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            contentValues.clear()
+            contentValues.put(MediaStore.Audio.Media.IS_PENDING, 0)
+            resolver.update(uri, contentValues, null, null)
+        }
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        try {
+            resolver.delete(uri, null, null)
+        } catch (ignored: Exception) {}
+        false
     }
 }
 

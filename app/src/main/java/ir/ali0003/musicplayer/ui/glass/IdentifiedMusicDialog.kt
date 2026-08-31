@@ -52,6 +52,13 @@ import coil.compose.AsyncImage
 import ir.ali0003.musicplayer.model.GlassTheme
 import ir.ali0003.musicplayer.model.MusicIdentifyResult
 
+private fun isValidWebUrl(url: String?): Boolean {
+    if (url.isNullOrBlank()) return false
+    val trimmed = url.trim()
+    return (trimmed.startsWith("https://", ignoreCase = true) || trimmed.startsWith("http://", ignoreCase = true)) 
+           && trimmed.lowercase() != "null"
+}
+
 @Composable
 fun IdentifiedMusicDialog(
     result: MusicIdentifyResult,
@@ -102,6 +109,23 @@ fun IdentifiedMusicDialog(
         ) {
             val containerShape = RoundedCornerShape(28.dp)
             val dialogScrollState = rememberScrollState()
+            
+            val finalYoutubeUrl = remember(result.youtubeUrl, result.title, result.artist) {
+                if (isValidWebUrl(result.youtubeUrl)) {
+                    result.youtubeUrl!!.trim()
+                } else {
+                    "https://www.google.com/search?q=" + Uri.encode("${result.title} ${result.artist} youtube")
+                }
+            }
+
+            val finalSpotifyUrl = remember(result.spotifyUrl, result.title, result.artist) {
+                if (isValidWebUrl(result.spotifyUrl)) {
+                    result.spotifyUrl!!.trim()
+                } else {
+                    "https://www.google.com/search?q=" + Uri.encode("${result.title} ${result.artist} spotify")
+                }
+            }
+
             val googleSearchUrl = remember(result.title, result.artist) {
                 "https://www.google.com/search?q=" + Uri.encode("${result.title} ${result.artist}")
             }
@@ -240,7 +264,7 @@ fun IdentifiedMusicDialog(
                     platformName = "youtube",
                     icon = Icons.Default.PlayArrow,
                     backgroundColor = Color(0xFFFF0000),
-                    url = result.youtubeUrl,
+                    url = finalYoutubeUrl,
                     toastMessage = "YouTube link copied to clipboard",
                     context = context,
                     testTag = "btn_open_youtube",
@@ -254,7 +278,7 @@ fun IdentifiedMusicDialog(
                     platformName = "Spotify®",
                     icon = Icons.Default.MusicNote,
                     backgroundColor = Color(0xFF1DB954),
-                    url = result.spotifyUrl,
+                    url = finalSpotifyUrl,
                     toastMessage = "Spotify link copied to clipboard",
                     context = context,
                     testTag = "btn_open_spotify",
@@ -293,6 +317,13 @@ private fun PlatformStreamButton(
     copyTestTag: String
 ) {
     val buttonShape = RoundedCornerShape(20.dp)
+    val targetUrl = remember(url, platformName) {
+        url?.takeIf { it.isNotBlank() } ?: when (platformName) {
+            "youtube" -> "https://www.youtube.com"
+            "Spotify®" -> "https://open.spotify.com"
+            else -> "https://www.google.com"
+        }
+    }
 
     Row(
         modifier = Modifier
@@ -312,10 +343,6 @@ private fun PlatformStreamButton(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(color = Color.White),
                     onClick = {
-                        val targetUrl = url?.takeIf { it.isNotBlank() } ?: when (platformName) {
-                            "youtube" -> "https://www.youtube.com"
-                            else -> "https://open.spotify.com"
-                        }
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl))
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -363,10 +390,6 @@ private fun PlatformStreamButton(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(color = Color.White),
                     onClick = {
-                        val targetUrl = url?.takeIf { it.isNotBlank() } ?: when (platformName) {
-                            "youtube" -> "https://www.youtube.com"
-                            else -> "https://open.spotify.com"
-                        }
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText(platformName, targetUrl)
                         clipboard.setPrimaryClip(clip)

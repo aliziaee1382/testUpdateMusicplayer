@@ -2520,18 +2520,21 @@ fun UpdateAvailableDialog(
     onDismiss: () -> Unit,
     theme: GlassTheme
 ) {
-    AnimatedGlassDialog(onDismissRequest = onDismiss) {
+    AnimatedGlassDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         GlassBox(
             theme = theme,
             modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .padding(8.dp),
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
             shape = RoundedCornerShape(24.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
+                    .padding(22.dp)
             ) {
                 // Header
                 Row(
@@ -2540,7 +2543,7 @@ fun UpdateAvailableDialog(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(46.dp)
                             .clip(CircleShape)
                             .background(theme.accentColor.copy(alpha = 0.18f))
                             .border(1.dp, theme.accentColor.copy(alpha = 0.35f), CircleShape),
@@ -2550,17 +2553,19 @@ fun UpdateAvailableDialog(
                             imageVector = Icons.Default.SystemUpdate,
                             contentDescription = null,
                             tint = theme.accentColor,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "New Update Available",
                             color = theme.textColor,
                             fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "A newer version of 0003 Player is ready",
                             color = theme.subtextColor,
@@ -2569,7 +2574,7 @@ fun UpdateAvailableDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
                 // Version comparison box (subtle frosted box)
                 Box(
@@ -2578,11 +2583,12 @@ fun UpdateAvailableDialog(
                         .clip(RoundedCornerShape(14.dp))
                         .background(theme.accentColor.copy(alpha = 0.1f))
                         .border(1.dp, theme.accentColor.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
-                        .padding(vertical = 12.dp, horizontal = 16.dp)
+                        .padding(vertical = 12.dp, horizontal = 16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -2592,7 +2598,7 @@ fun UpdateAvailableDialog(
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "•",
+                            text = "  •  ",
                             color = theme.accentColor,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
@@ -2655,9 +2661,13 @@ fun UpdateAvailableDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Later", color = theme.subtextColor)
+                        Text(
+                            text = "Later",
+                            color = theme.subtextColor,
+                            fontSize = 14.sp
+                        )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     GlassButton(
                         text = "Download Update",
                         onClick = {

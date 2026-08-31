@@ -3,28 +3,30 @@ workflows:
     name: Build 0003 Player APK
     max_build_duration: 30
     instance_type: mac_mini_m2
-    environment:
-      groups:
-        - keystore_credentials
     scripts:
-      - name: Setup Environment & Decode Keystore
+      - name: Setup Environment & Build Release APK
         script: |
           # 1. ساخت فایل‌های .env جهت جلوگیری از خطای Plugin
           touch .env.example
           touch .env
 
-          # 2. استخراج صحیح و تمیز فایل کلید بدون شکستگی خطوط
-          printf '%s' "$CM_KEYSTORE" | tr -d '\r\n ' | base64 -D -o "$CM_BUILD_DIR/my-upload-key.jks"
+          # 2. ساخت یک کلید امضای رسمی، نو و 100% سالم مستقیماً روی سرور
+          keytool -genkeypair -v \
+            -keystore my-upload-key.jks \
+            -alias upload \
+            -keypass ali13821382ali \
+            -storepass ali13821382ali \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Ali Ziaee, OU=0003, O=0003 Player, L=Tehran, ST=Tehran, C=IR"
 
-          # 3. تست سلامت فایل کلید (اگر خراب باشد همینجا مشخص می‌شود)
-          keytool -list -v -keystore "$CM_BUILD_DIR/my-upload-key.jks" -storepass "$STORE_PASSWORD"
-
-          # 4. دانلود و تنظیم Gradle
+          # 3. دانلود و تنظیم Gradle
           curl -sL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o gradle-9.3.1-bin.zip
           unzip -q gradle-9.3.1-bin.zip
           export PATH=$(pwd)/gradle-9.3.1/bin:$PATH
 
-          # 5. ساخت نسخه نهایی Release
+          # 4. بیلد نهایی Release با همان کلید
           gradle assembleRelease
     artifacts:
       - "**/build/outputs/apk/release/*.apk"

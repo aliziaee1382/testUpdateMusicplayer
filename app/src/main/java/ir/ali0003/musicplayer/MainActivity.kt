@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -262,10 +263,12 @@ fun GlassAudioApp(
 
     val tracks by viewModel.allTracks.collectAsStateWithLifecycle()
     val hiddenTracks by viewModel.hiddenTracks.collectAsStateWithLifecycle()
+    val hiddenFolders by viewModel.hiddenFolders.collectAsStateWithLifecycle()
     val editingTrack by viewModel.editingTrack.collectAsStateWithLifecycle()
     val favoriteTracks by viewModel.favoriteTracks.collectAsStateWithLifecycle()
     val recentlyPlayed by viewModel.recentlyPlayed.collectAsStateWithLifecycle()
     val playlists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val audioFolders by viewModel.audioFolders.collectAsStateWithLifecycle()
 
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
@@ -291,6 +294,7 @@ fun GlassAudioApp(
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     var selectedPlaylistInitialEditMode by remember { mutableStateOf(false) }
     var showHiddenTracksDialog by remember { mutableStateOf(false) }
+    var showHiddenFoldersDialog by remember { mutableStateOf(false) }
 
     // Handle system back button step-by-step
     val isBackHandlerEnabled = isNowPlayingExpanded ||
@@ -299,6 +303,7 @@ fun GlassAudioApp(
             showThemeSelector ||
             showCreatePlaylist ||
             showHiddenTracksDialog ||
+            showHiddenFoldersDialog ||
             editingTrack != null ||
             targetTrackForPlaylist != null ||
             selectedPlaylist != null ||
@@ -313,6 +318,7 @@ fun GlassAudioApp(
             showThemeSelector -> viewModel.setShowThemeSelector(false)
             showCreatePlaylist -> viewModel.setShowCreatePlaylist(false)
             showHiddenTracksDialog -> showHiddenTracksDialog = false
+            showHiddenFoldersDialog -> showHiddenFoldersDialog = false
             editingTrack != null -> viewModel.openEditTrack(null)
             targetTrackForPlaylist != null -> viewModel.openAddToPlaylistForTrack(null)
             selectedPlaylist != null -> viewModel.setSelectedPlaylist(null)
@@ -378,6 +384,12 @@ fun GlassAudioApp(
                                 sortCriterion = sortCriterion,
                                 sortOrder = sortOrder,
                                 allPlaylists = playlists,
+                                isRefreshing = isScanning,
+                                onRefresh = {
+                                    viewModel.scanAndLoadLocalAudio {
+                                        Toast.makeText(context, "Library refreshed", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
                                 onSelectCategory = { viewModel.setSelectedCategory(it) },
                                 onSearchQueryChange = { viewModel.setSearchQuery(it) },
                                 onSortCriterionChange = { criterion -> viewModel.setSortPreference(criterion, sortOrder) },
@@ -390,6 +402,10 @@ fun GlassAudioApp(
                                 onOpenAddToPlaylist = { viewModel.openAddToPlaylistForTrack(it) },
                                 onScanLocalMusic = { permissionLauncher.launch(permissionsToRequest) },
                                 onHideTracks = { trackIds -> viewModel.hideTracks(trackIds) },
+                                onHideFolder = { folderName ->
+                                    viewModel.hideFolder(folderName)
+                                    Toast.makeText(context, "Folder hidden", Toast.LENGTH_SHORT).show()
+                                },
                                 onPlayNextTracks = { tracksList -> viewModel.playNext(tracksList) },
                                 onAddTracksToPlaylist = { playlistId, trackIds -> viewModel.addTracksToPlaylist(playlistId, trackIds) },
                                 onCreatePlaylist = { name -> viewModel.createPlaylist(name) },
@@ -413,7 +429,7 @@ fun GlassAudioApp(
                                 playlists = playlists,
                                 tracks = tracks,
                                 favoriteTracks = favoriteTracks,
-                                folders = viewModel.sampleFolders,
+                                folders = audioFolders,
                                 activeSortTab = librarySortTab,
                                 theme = currentTheme,
                                 listItemSize = listItemSize,
@@ -454,6 +470,8 @@ fun GlassAudioApp(
                                 onScanLocalMusic = { permissionLauncher.launch(permissionsToRequest) },
                                 onOpenHiddenTracks = { showHiddenTracksDialog = true },
                                 hiddenCount = hiddenTracks.size,
+                                onOpenHiddenFolders = { showHiddenFoldersDialog = true },
+                                hiddenFoldersCount = hiddenFolders.size,
                                 scrollToTopTrigger = settingsScrollToTopTrigger
                             )
                         }
@@ -642,6 +660,16 @@ fun GlassAudioApp(
                     onUnhideTrack = { trackId -> viewModel.unhideTrack(trackId) },
                     onUnhideAll = { viewModel.unhideAllTracks() },
                     onDismiss = { showHiddenTracksDialog = false },
+                    theme = currentTheme
+                )
+            }
+
+            if (showHiddenFoldersDialog) {
+                HiddenFoldersDialog(
+                    hiddenFolders = hiddenFolders.toList(),
+                    onUnhideFolder = { folderName -> viewModel.unhideFolder(folderName) },
+                    onUnhideAll = { viewModel.unhideAllFolders() },
+                    onDismiss = { showHiddenFoldersDialog = false },
                     theme = currentTheme
                 )
             }

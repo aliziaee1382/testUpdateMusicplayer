@@ -18,6 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +46,7 @@ import androidx.compose.ui.res.painterResource
 import ir.ali0003.musicplayer.R
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     tracks: List<Track>,
@@ -58,6 +62,8 @@ fun HomeScreen(
     sortCriterion: TrackSortCriterion = TrackSortCriterion.DATE_ADDED,
     sortOrder: TrackSortOrder = TrackSortOrder.DESCENDING,
     allPlaylists: List<Playlist> = emptyList(),
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     onSelectCategory: (String) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSortCriterionChange: (TrackSortCriterion) -> Unit = {},
@@ -70,6 +76,7 @@ fun HomeScreen(
     onOpenAddToPlaylist: ((Track) -> Unit)? = null,
     onScanLocalMusic: (() -> Unit)? = null,
     onHideTracks: ((List<Long>) -> Unit)? = null,
+    onHideFolder: ((String) -> Unit)? = null,
     onPlayNextTracks: ((List<Track>) -> Unit)? = null,
     onAddTracksToPlaylist: ((Long, List<Long>) -> Unit)? = null,
     onCreatePlaylist: ((String) -> Unit)? = null,
@@ -78,8 +85,25 @@ fun HomeScreen(
 ) {
     var showSortDialog by remember { mutableStateOf(false) }
     var showSearchDialog by remember { mutableStateOf(false) }
+    var folderToHide by remember { mutableStateOf<String?>(null) }
     var selectedTrackIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var showMultiAddToPlaylistDialog by remember { mutableStateOf(false) }
+
+    if (folderToHide != null) {
+        HideFolderConfirmationDialog(
+            folderName = folderToHide!!,
+            onConfirm = {
+                val target = folderToHide!!
+                folderToHide = null
+                if (selectedCategory.equals(target, ignoreCase = true)) {
+                    onSelectCategory("All")
+                }
+                onHideFolder?.invoke(target)
+            },
+            onDismiss = { folderToHide = null },
+            theme = theme
+        )
+    }
 
     BackHandler(enabled = selectedTrackIds.isNotEmpty()) {
         selectedTrackIds = emptySet()
@@ -174,7 +198,23 @@ fun HomeScreen(
     val isMiniPlayerVisible = currentTrack != null && !isNowPlayingExpanded
     val bottomOffset = if (isMiniPlayerVisible) 130.dp else 65.dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        state = pullToRefreshState,
+        modifier = Modifier.fillMaxSize(),
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = pullToRefreshState,
+                isRefreshing = isRefreshing,
+                modifier = Modifier.align(Alignment.TopCenter),
+                containerColor = if (theme.isLight) Color(0xFFF3F4F6) else Color(0xFF1E293B),
+                color = theme.accentColor
+            )
+        }
+    ) {
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -354,10 +394,14 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 20.dp)
                     ) {
                         items(categories, key = { it }, contentType = { "category_chip" }) { category ->
+                            val isAll = category == "All"
                             GlassChip(
                                 text = category,
                                 isSelected = selectedCategory == category,
                                 onClick = { onSelectCategory(category) },
+                                onLongClick = if (!isAll) {
+                                    { folderToHide = category }
+                                } else null,
                                 theme = theme,
                                 testTag = "category_chip_$category"
                             )

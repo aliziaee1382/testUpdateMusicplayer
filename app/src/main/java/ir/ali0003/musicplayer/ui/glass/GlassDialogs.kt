@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
@@ -55,6 +56,7 @@ import ir.ali0003.musicplayer.R
 @Composable
 fun AnimatedGlassDialog(
     onDismissRequest: () -> Unit,
+    properties: DialogProperties = DialogProperties(),
     content: @Composable () -> Unit
 ) {
     var animateIn by remember { mutableStateOf(false) }
@@ -76,7 +78,10 @@ fun AnimatedGlassDialog(
         label = "dialogAlpha"
     )
 
-    Dialog(onDismissRequest = onDismissRequest) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = properties
+    ) {
         Box(
             modifier = Modifier
                 .graphicsLayer {
@@ -1548,13 +1553,16 @@ fun SearchTracksDialog(
     onDismiss: () -> Unit,
     theme: GlassTheme
 ) {
-    AnimatedGlassDialog(onDismissRequest = onDismiss) {
+    AnimatedGlassDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         GlassBox(
             theme = theme,
             modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .fillMaxHeight(0.85f)
-                .padding(12.dp)
+                .fillMaxWidth()
+                .fillMaxHeight(0.88f)
+                .padding(horizontal = 16.dp, vertical = 24.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -1567,18 +1575,21 @@ fun SearchTracksDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
                             tint = theme.accentColor,
                             modifier = Modifier.size(24.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "Search Songs & Artists",
+                            text = "Search",
                             color = theme.textColor,
-                            fontSize = 18.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -1711,12 +1722,12 @@ fun SearchTracksDialog(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(itemShape)
-                                        .background(theme.glassFill)
+                                        .background(if (isCurrent) theme.accentColor.copy(alpha = 0.15f) else theme.glassFill)
                                         .clickable {
                                             onPlayTrack(track, filteredResults)
                                             onDismiss()
                                         }
-                                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                                        .padding(horizontal = 12.dp, vertical = 9.dp)
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -1730,7 +1741,7 @@ fun SearchTracksDialog(
                                             modifier = Modifier.size(42.dp)
                                         )
 
-                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Spacer(modifier = Modifier.width(12.dp))
 
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
@@ -1741,14 +1752,17 @@ fun SearchTracksDialog(
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
+                                            Spacer(modifier = Modifier.height(2.dp))
                                             Text(
-                                                text = "${track.artist} • ${track.album}",
+                                                text = if (track.album.isNotBlank() && track.album != "Unknown Album") "${track.artist} • ${track.album}" else track.artist,
                                                 color = theme.subtextColor,
                                                 fontSize = 11.sp,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
                                         }
+
+                                        Spacer(modifier = Modifier.width(8.dp))
 
                                         Text(
                                             text = track.formattedDuration(),
@@ -2179,6 +2193,266 @@ fun ScanningMusicDialog(
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HideFolderConfirmationDialog(
+    folderName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    theme: GlassTheme
+) {
+    AnimatedGlassDialog(onDismissRequest = onDismiss) {
+        GlassBox(
+            modifier = Modifier
+                .fillMaxWidth(0.88f)
+                .padding(4.dp),
+            theme = theme,
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(theme.accentColor.copy(alpha = 0.15f))
+                        .border(1.dp, theme.accentColor.copy(alpha = 0.3f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FolderOff,
+                        contentDescription = null,
+                        tint = theme.accentColor,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Hide Folder",
+                    color = theme.textColor,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Do you want to hide '$folderName' and all its songs from your library?",
+                    color = theme.subtextColor,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
+
+                Spacer(modifier = Modifier.height(22.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    GlassButton(
+                        text = "Cancel",
+                        onClick = onDismiss,
+                        theme = theme,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    GlassButton(
+                        text = "Hide",
+                        onClick = onConfirm,
+                        theme = theme,
+                        isHighlighted = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HiddenFoldersDialog(
+    hiddenFolders: List<String>,
+    onUnhideFolder: (String) -> Unit,
+    onUnhideAll: () -> Unit,
+    onDismiss: () -> Unit,
+    theme: GlassTheme
+) {
+    AnimatedGlassDialog(onDismissRequest = onDismiss) {
+        GlassBox(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.75f),
+            theme = theme,
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.FolderOff,
+                            contentDescription = null,
+                            tint = theme.accentColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Hidden Folders",
+                            color = theme.textColor,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    GlassIconButton(
+                        icon = Icons.Default.Close,
+                        contentDescription = "Close",
+                        onClick = onDismiss,
+                        theme = theme,
+                        size = 32.dp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (hiddenFolders.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${hiddenFolders.size} folder(s) hidden",
+                            color = theme.subtextColor,
+                            fontSize = 13.sp
+                        )
+
+                        GlassButton(
+                            text = "Unhide All",
+                            onClick = onUnhideAll,
+                            theme = theme,
+                            modifier = Modifier.height(36.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        contentPadding = PaddingValues(bottom = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(hiddenFolders, key = { it }) { folderName ->
+                            GlassCard(
+                                onClick = {},
+                                theme = theme,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(theme.accentColor.copy(alpha = 0.15f))
+                                            .border(1.dp, theme.accentColor.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.FolderOff,
+                                            contentDescription = null,
+                                            tint = theme.accentColor,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = folderName,
+                                            color = theme.textColor,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "Hidden from library",
+                                            color = theme.subtextColor,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    IconButton(
+                                        onClick = { onUnhideFolder(folderName) },
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(theme.accentColor.copy(alpha = 0.15f))
+                                            .border(1.dp, theme.accentColor.copy(alpha = 0.35f), CircleShape)
+                                            .size(38.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Visibility,
+                                            contentDescription = "Unhide folder",
+                                            tint = theme.accentColor,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = theme.subtextColor.copy(alpha = 0.5f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "No hidden folders",
+                                color = theme.subtextColor,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
             }
         }

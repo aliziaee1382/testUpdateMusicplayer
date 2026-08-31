@@ -19,6 +19,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -75,6 +76,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // Data Flows from Repository
     val minDurationFilter: StateFlow<Int>
+    val hiddenFolders: StateFlow<Set<String>>
     val allTracks: StateFlow<List<Track>>
     val hiddenTracks: StateFlow<List<Track>>
     val favoriteTracks: StateFlow<List<Track>>
@@ -88,9 +90,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isAutoSystemTheme: StateFlow<Boolean>
     val listItemSize: StateFlow<ListItemSize>
     val isDynamicBgEnabled: StateFlow<Boolean>
+    val audioFolders: StateFlow<List<AudioFolder>>
 
     private val _editingTrack = MutableStateFlow<Track?>(null)
     val editingTrack: StateFlow<Track?> = _editingTrack.asStateFlow()
+
+    private fun isTrackInHiddenFolders(track: Track, hiddenFolders: Set<String>): Boolean {
+        if (hiddenFolders.isEmpty()) return false
+        val folderName = track.folderName.trim()
+        val category = track.category.trim()
+        val audioUrl = track.audioUrl.trim()
+        val parentPath = if (audioUrl.contains('/')) audioUrl.substringBeforeLast('/') else ""
+
+        return hiddenFolders.any { hiddenRaw ->
+            val hidden = hiddenRaw.trim()
+            if (hidden.isEmpty()) return@any false
+
+            folderName.equals(hidden, ignoreCase = true) ||
+            category.equals(hidden, ignoreCase = true) ||
+            (parentPath.isNotEmpty() && (parentPath.equals(hidden, ignoreCase = true) || parentPath.endsWith("/$hidden", ignoreCase = true))) ||
+            audioUrl.equals(hidden, ignoreCase = true) ||
+            audioUrl.startsWith(hidden, ignoreCase = true) ||
+            audioUrl.contains("/$hidden/", ignoreCase = true)
+        }
+    }
 
     init {
         val dao = AppDatabase.getDatabase(application).musicDao()
@@ -147,12 +170,49 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 true
             )
 
-        allTracks = combine(repository.allTracks, minDurationFilter) { tracks, minSecs ->
-            if (minSecs > 0) tracks.filter { it.durationSeconds >= minSecs } else tracks
+        hiddenFolders = repository.hiddenFolders.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptySet()
+        )
+
+        allTracks = combine(repository.allTracks, minDurationFilter, repository.hiddenFolders) { tracks, minSecs, hiddenSet ->
+            var list = tracks
+            if (minSecs > 0) {
+                list = list.filter { it.durationSeconds >= minSecs }
+            }
+            if (hiddenSet.isNotEmpty()) {
+                list = list.filter { track -> !isTrackInHiddenFolders(track, hiddenSet) }
+            }
+            list
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
             emptyList()
+        )
+
+        audioFolders = allTracks.map { trackList ->
+            val detected = trackList.groupBy { it.folderName }
+                .filter { (folderName, _) -> folderName.isNotBlank() }
+                .map { (folderName, folderTracks) ->
+                    val sample = folderTracks.firstOrNull()
+                    val path = if (sample?.audioUrl?.contains('/') == true) {
+                        sample.audioUrl.substringBeforeLast('/')
+                    } else "/storage/emulated/0/$folderName"
+                    val totalDurationMin = (folderTracks.sumOf { it.durationSeconds.toLong() } / 60).toInt()
+                    AudioFolder(
+                        name = folderName,
+                        path = path,
+                        songCount = folderTracks.size,
+                        totalDurationMin = totalDurationMin
+                    )
+                }
+                .sortedBy { it.name.lowercase() }
+            detected.ifEmpty { sampleFolders }
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            sampleFolders
         )
 
         hiddenTracks = repository.hiddenTracks.stateIn(
@@ -161,16 +221,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             emptyList()
         )
 
-        favoriteTracks = combine(repository.favoriteTracks, minDurationFilter) { tracks, minSecs ->
-            if (minSecs > 0) tracks.filter { it.durationSeconds >= minSecs } else tracks
+        favoriteTracks = combine(repository.favoriteTracks, minDurationFilter, repository.hiddenFolders) { tracks, minSecs, hiddenSet ->
+            var list = tracks
+            if (minSecs > 0) {
+                list = list.filter { it.durationSeconds >= minSecs }
+            }
+            if (hiddenSet.isNotEmpty()) {
+                list = list.filter { track -> !isTrackInHiddenFolders(track, hiddenSet) }
+            }
+            list
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
             emptyList()
         )
 
-        recentlyPlayed = combine(repository.recentlyPlayed, minDurationFilter) { tracks, minSecs ->
-            if (minSecs > 0) tracks.filter { it.durationSeconds >= minSecs } else tracks
+        recentlyPlayed = combine(repository.recentlyPlayed, minDurationFilter, repository.hiddenFolders) { tracks, minSecs, hiddenSet ->
+            var list = tracks
+            if (minSecs > 0) {
+                list = list.filter { it.durationSeconds >= minSecs }
+            }
+            if (hiddenSet.isNotEmpty()) {
+                list = list.filter { track -> !isTrackInHiddenFolders(track, hiddenSet) }
+            }
+            list
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
@@ -189,9 +263,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (playlist == null) flowOf(emptyList())
                 else repository.getTracksForPlaylist(playlist.id)
             },
-            minDurationFilter
-        ) { tracks, minSecs ->
-            if (minSecs > 0) tracks.filter { it.durationSeconds >= minSecs } else tracks
+            minDurationFilter,
+            repository.hiddenFolders
+        ) { tracks, minSecs, hiddenSet ->
+            var list = tracks
+            if (minSecs > 0) {
+                list = list.filter { it.durationSeconds >= minSecs }
+            }
+            if (hiddenSet.isNotEmpty()) {
+                list = list.filter { track -> !isTrackInHiddenFolders(track, hiddenSet) }
+            }
+            list
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
@@ -292,7 +374,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var scanJob: Job? = null
 
-    fun scanAndLoadLocalAudio(forceRescanAll: Boolean = false) {
+    fun scanAndLoadLocalAudio(forceRescanAll: Boolean = false, onComplete: (() -> Unit)? = null) {
         if (scanJob?.isActive == true && _isScanning.value) {
             return
         }
@@ -317,6 +399,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 e.printStackTrace()
             } finally {
                 _isScanning.value = false
+                withContext(Dispatchers.Main) {
+                    onComplete?.invoke()
+                }
             }
         }
     }
@@ -472,6 +557,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun unhideAllTracks() {
         viewModelScope.launch {
             repository.unhideAllTracks()
+        }
+    }
+
+    fun hideFolder(folderName: String) {
+        val trimmed = folderName.trim()
+        if (trimmed.isBlank()) return
+
+        if (_selectedCategory.value.equals(trimmed, ignoreCase = true)) {
+            _selectedCategory.value = "All"
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val tracksInFolder = allTracks.value.filter { isTrackInHiddenFolders(it, setOf(trimmed)) }
+            repository.hideFolder(trimmed)
+            tracksInFolder.forEach {
+                playerManager.removeTrackFromQueue(it.id)
+            }
+        }
+    }
+
+    fun unhideFolder(folderName: String) {
+        val trimmed = folderName.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.unhideFolder(trimmed)
+        }
+    }
+
+    fun unhideAllFolders() {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.unhideAllFolders()
         }
     }
 

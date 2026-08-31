@@ -6,9 +6,13 @@ import ir.ali0003.musicplayer.model.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class MusicRepository(private val dao: MusicDao) {
+
+    private val prefsMutex = Mutex()
 
     val allTracks: Flow<List<Track>> = dao.getAllTracks().map { entities ->
         entities.map { it.toTrack() }
@@ -31,6 +35,10 @@ class MusicRepository(private val dao: MusicDao) {
     }
 
     val userPreferences: Flow<UserPreferencesEntity?> = dao.getUserPreferences()
+
+    val hiddenFolders: Flow<Set<String>> = userPreferences.map { prefs ->
+        prefs?.getHiddenFolderSet() ?: emptySet()
+    }
 
     suspend fun toggleFavorite(track: Track) = withContext(Dispatchers.IO) {
         dao.updateFavoriteStatus(track.id, !track.isFavorite)
@@ -109,48 +117,69 @@ class MusicRepository(private val dao: MusicDao) {
         }
     }
 
+    suspend fun updatePreferences(transform: (UserPreferencesEntity) -> UserPreferencesEntity): UserPreferencesEntity = withContext(Dispatchers.IO) {
+        prefsMutex.withLock {
+            val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
+            val updated = transform(current)
+            dao.saveUserPreferences(updated)
+            updated
+        }
+    }
+
+    suspend fun getHiddenFoldersSync(): Set<String> = withContext(Dispatchers.IO) {
+        prefsMutex.withLock {
+            val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
+            current.getHiddenFolderSet()
+        }
+    }
+
     suspend fun savePreferences(prefs: UserPreferencesEntity) {
-        dao.saveUserPreferences(prefs)
+        updatePreferences { prefs }
     }
 
     suspend fun updateThemePreference(themeId: String, isAutoSystemTheme: Boolean = false) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
-        dao.saveUserPreferences(current.copy(activeThemeId = themeId, isAutoSystemTheme = isAutoSystemTheme))
+        updatePreferences { current ->
+            current.copy(activeThemeId = themeId, isAutoSystemTheme = isAutoSystemTheme)
+        }
     }
 
     suspend fun updateAutoSystemThemePreference(isAuto: Boolean) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
-        dao.saveUserPreferences(current.copy(isAutoSystemTheme = isAuto))
+        updatePreferences { current ->
+            current.copy(isAutoSystemTheme = isAuto)
+        }
     }
 
     suspend fun updateSortPreferences(criterion: String, order: String) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
-        dao.saveUserPreferences(current.copy(sortCriterion = criterion, sortOrder = order))
+        updatePreferences { current ->
+            current.copy(sortCriterion = criterion, sortOrder = order)
+        }
     }
 
     suspend fun updateCategoryPreference(category: String) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
-        dao.saveUserPreferences(current.copy(lastSelectedCategory = category))
+        updatePreferences { current ->
+            current.copy(lastSelectedCategory = category)
+        }
     }
 
     suspend fun updateActiveNavTabPreference(tab: String) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
-        dao.saveUserPreferences(current.copy(lastActiveNavTab = tab))
+        updatePreferences { current ->
+            current.copy(lastActiveNavTab = tab)
+        }
     }
 
     suspend fun updateLibrarySortTabPreference(tab: String) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
-        dao.saveUserPreferences(current.copy(lastLibrarySortTab = tab))
+        updatePreferences { current ->
+            current.copy(lastLibrarySortTab = tab)
+        }
     }
 
     suspend fun updateEqualizerPreferences(presetName: String, gains: List<Float>) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
         val g0 = gains.getOrElse(0) { 0f }
         val g1 = gains.getOrElse(1) { 0f }
         val g2 = gains.getOrElse(2) { 0f }
         val g3 = gains.getOrElse(3) { 0f }
         val g4 = gains.getOrElse(4) { 0f }
-        dao.saveUserPreferences(
+        updatePreferences { current ->
             current.copy(
                 eqPresetName = presetName,
                 eq60Hz = g0,
@@ -159,33 +188,65 @@ class MusicRepository(private val dao: MusicDao) {
                 eq3600Hz = g3,
                 eq14000Hz = g4
             )
-        )
+        }
     }
 
     suspend fun updateMinDurationFilter(minSeconds: Int) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
-        dao.saveUserPreferences(current.copy(minDurationFilterSeconds = minSeconds))
+        updatePreferences { current ->
+            current.copy(minDurationFilterSeconds = minSeconds)
+        }
     }
 
     suspend fun updateListItemSize(size: ir.ali0003.musicplayer.model.ListItemSize) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
-        dao.saveUserPreferences(current.copy(listItemSize = size.name))
+        updatePreferences { current ->
+            current.copy(listItemSize = size.name)
+        }
     }
 
     suspend fun updateDynamicBgPreference(enabled: Boolean) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
-        dao.saveUserPreferences(current.copy(isDynamicBgEnabled = enabled))
+        updatePreferences { current ->
+            current.copy(isDynamicBgEnabled = enabled)
+        }
+    }
+
+    suspend fun hideFolder(folderName: String): Set<String> = withContext(Dispatchers.IO) {
+        var resultSet = emptySet<String>()
+        updatePreferences { current ->
+            val set = current.getHiddenFolderSet().toMutableSet()
+            if (folderName.isNotBlank()) {
+                set.add(folderName.trim())
+            }
+            resultSet = set
+            current.copy(hiddenFolders = current.withHiddenFolderSet(set))
+        }
+        resultSet
+    }
+
+    suspend fun unhideFolder(folderName: String): Set<String> = withContext(Dispatchers.IO) {
+        var resultSet = emptySet<String>()
+        updatePreferences { current ->
+            val set = current.getHiddenFolderSet().toMutableSet()
+            set.remove(folderName.trim())
+            resultSet = set
+            current.copy(hiddenFolders = current.withHiddenFolderSet(set))
+        }
+        resultSet
+    }
+
+    suspend fun unhideAllFolders() = withContext(Dispatchers.IO) {
+        updatePreferences { current ->
+            current.copy(hiddenFolders = "[]")
+        }
     }
 
     suspend fun updatePlaybackState(trackId: Long, positionMs: Long, queueTrackIds: String) = withContext(Dispatchers.IO) {
-        val current = dao.getUserPreferencesDirect() ?: UserPreferencesEntity()
-        dao.saveUserPreferences(
+        updatePreferences { current ->
             current.copy(
                 lastPlayedTrackId = trackId,
                 lastPlaybackPositionMs = positionMs,
                 lastQueueTrackIds = queueTrackIds
             )
-        )
+        }
     }
 
     suspend fun insertLocalTracks(tracks: List<Track>) = withContext(Dispatchers.IO) {

@@ -5,6 +5,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -402,11 +404,13 @@ fun GlassIconButton(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GlassChip(
     text: String,
     isSelected: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     theme: GlassTheme = GlassTheme.DarkGreen,
     testTag: String? = null
 ) {
@@ -435,10 +439,11 @@ fun GlassChip(
                 color = if (isSelected) theme.accentColor else theme.glassBorder,
                 shape = shape
             )
-            .clickable(
+            .combinedClickable(
                 indication = ripple(color = theme.accentColor),
                 interactionSource = interactionSource,
-                onClick = onClick
+                onClick = onClick,
+                onLongClick = onLongClick
             )
             .padding(horizontal = 18.dp, vertical = 10.dp)
             .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),

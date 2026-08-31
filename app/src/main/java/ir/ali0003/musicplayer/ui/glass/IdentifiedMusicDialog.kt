@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.GraphicEq
@@ -242,6 +244,44 @@ fun IdentifiedMusicDialog(
                         .testTag("identified_track_artist")
                 )
 
+                val hasAlbum = !result.album.isNullOrBlank()
+                val hasReleaseDate = !result.releaseDate.isNullOrBlank()
+                val hasGenre = !result.genre.isNullOrBlank()
+
+                if (hasAlbum || hasReleaseDate || hasGenre) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp)
+                    ) {
+                        if (hasAlbum) {
+                            MetadataChip(
+                                icon = Icons.Default.Album,
+                                text = result.album,
+                                theme = theme
+                            )
+                        }
+                        if (hasReleaseDate) {
+                            MetadataChip(
+                                icon = Icons.Default.CalendarToday,
+                                text = result.releaseDate!!,
+                                theme = theme
+                            )
+                        }
+                        if (hasGenre) {
+                            MetadataChip(
+                                icon = Icons.Default.MusicNote,
+                                text = result.genre!!,
+                                theme = theme
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Copyright notice (exact English text, 12sp, soft color)
@@ -406,5 +446,38 @@ private fun PlatformStreamButton(
                 modifier = Modifier.size(20.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun MetadataChip(
+    icon: ImageVector,
+    text: String,
+    theme: GlassTheme
+) {
+    val chipShape = RoundedCornerShape(12.dp)
+    Row(
+        modifier = Modifier
+            .clip(chipShape)
+            .background(theme.glassFill.copy(alpha = 0.5f))
+            .border(0.8.dp, theme.glassBorder, chipShape)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = theme.accentColor,
+            modifier = Modifier.size(12.dp)
+        )
+        Text(
+            text = text,
+            color = theme.subtextColor,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

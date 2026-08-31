@@ -41,6 +41,8 @@ fun SettingsScreen(
     onScanLocalMusic: (() -> Unit)? = null,
     onOpenHiddenTracks: (() -> Unit)? = null,
     hiddenCount: Int = 0,
+    onOpenHiddenFolders: (() -> Unit)? = null,
+    hiddenFoldersCount: Int = 0,
     scrollToTopTrigger: Int = 0
 ) {
     val listState = rememberLazyListState()
@@ -546,6 +548,54 @@ fun SettingsScreen(
                                         )
                                         Text(
                                             text = if (hiddenCount > 0) "$hiddenCount track(s) hidden" else "No hidden tracks",
+                                            color = theme.subtextColor,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "Open",
+                                    tint = theme.subtextColor
+                                )
+                            }
+                        }
+                    }
+
+                    if (onOpenHiddenFolders != null) {
+                        GlassCard(
+                            onClick = { onOpenHiddenFolders.invoke() },
+                            theme = theme,
+                            modifier = Modifier.fillMaxWidth(),
+                            testTag = "settings_hidden_folders_card"
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FolderOff,
+                                        contentDescription = null,
+                                        tint = theme.accentColor,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(14.dp))
+                                    Column {
+                                        Text(
+                                            text = "Hidden Folders",
+                                            color = theme.textColor,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = if (hiddenFoldersCount > 0) "$hiddenFoldersCount folder(s) hidden" else "No hidden folders",
                                             color = theme.subtextColor,
                                             fontSize = 12.sp
                                         )

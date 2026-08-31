@@ -62,15 +62,28 @@ object SoundRecognitionService {
                 if (data != null) {
                     val title = data.optString("title", "Unknown Track")
                     val artist = data.optString("artist", "Unknown Artist")
-                    val album = data.optString("album", "")
-                    val coverUrl = data.optString("cover_image", "").takeIf { it.isNotBlank() }
-                    val youtubeUrl = data.optString("youtube_url", "").takeIf { it.isNotBlank() }
-                    val spotifyUrl = data.optString("spotify_url", "").takeIf { it.isNotBlank() }
+                    val album = data.optString("album", "").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) } ?: ""
+                    val releaseDate = data.optString("release_date", "").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                        ?: data.optString("release_year", "").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                    val genre = if (data.has("genre")) {
+                        data.optString("genre", "").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                    } else if (data.has("genres")) {
+                        val genresArr = data.optJSONArray("genres")
+                        if (genresArr != null && genresArr.length() > 0) {
+                            val first = genresArr.optJSONObject(0)?.optString("name") ?: genresArr.optString(0)
+                            first.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                        } else null
+                    } else null
+                    val coverUrl = data.optString("cover_image", "").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                    val youtubeUrl = data.optString("youtube_url", "").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                    val spotifyUrl = data.optString("spotify_url", "").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
 
                     val identifyResult = MusicIdentifyResult(
                         title = title,
                         artist = artist,
                         album = album,
+                        releaseDate = releaseDate,
+                        genre = genre,
                         coverUrl = coverUrl,
                         youtubeUrl = youtubeUrl,
                         spotifyUrl = spotifyUrl

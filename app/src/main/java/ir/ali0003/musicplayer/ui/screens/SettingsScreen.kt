@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -778,6 +779,57 @@ fun SettingsScreen(
                             tint = theme.subtextColor
                         )
                     }
+                }
+            }
+        }
+
+        // Donation / Support Button
+        item {
+            val supportUrl = "https://daramet.com/Aliziaee1382"
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(theme.glassFill)
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                theme.glassBorder,
+                                theme.accentColor.copy(alpha = 0.3f),
+                                theme.glassBorder
+                            )
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(color = theme.accentColor)
+                    ) {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(supportUrl)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Could not open browser.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .testTag("settings_donate_btn"),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "اگه حال میکنی حمایت کن 💰",
+                        color = theme.textColor,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }

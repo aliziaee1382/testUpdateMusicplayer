@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -136,7 +137,6 @@ fun SoundToolsScreen(
             coroutineScope.launch(Dispatchers.IO) {
                 val fileName = "Audio_${System.currentTimeMillis()}.m4a"
                 val targetFile = File(context.cacheDir, fileName)
-                // Extract FULL audio track (no duration limit)
                 val success = extractFullAudioFromVideoUri(context, uri, targetFile)
 
                 withContext(Dispatchers.Main) {
@@ -169,7 +169,6 @@ fun SoundToolsScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Centered Screen Title: "sound tools"
             Text(
                 text = "sound tools",
                 color = theme.textColor,
@@ -183,7 +182,7 @@ fun SoundToolsScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Section 1: Live Recording Capsule ("top and hold to search" with Mic on right)
+            // Section 1: Live Recording Capsule (Themed Glassmorphism)
             LiveRecordingCapsule(
                 theme = theme,
                 isSearching = isSearchingAudio,
@@ -216,7 +215,7 @@ fun SoundToolsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section 2: "find music from video" with "upload from gallery" button
+            // Section 2: "find music from video"
             FindMusicFromVideoCard(
                 theme = theme,
                 isAnalyzing = isAnalyzingVideo,
@@ -228,7 +227,7 @@ fun SoundToolsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section 3: "video To music" with upload -> arrow -> download buttons
+            // Section 3: "video To music"
             VideoToMusicCard(
                 theme = theme,
                 isConverting = isConvertingVideoToMusic,
@@ -260,7 +259,6 @@ fun SoundToolsScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Status message during active search/analysis
             AnimatedVisibility(
                 visible = isSearchingAudio || isAnalyzingVideo,
                 enter = fadeIn(),
@@ -286,11 +284,9 @@ fun SoundToolsScreen(
                 }
             }
 
-            // Bottom Spacer for navigation bar and mini player clearance
             Spacer(modifier = Modifier.height(120.dp))
         }
 
-        // Identified Music Result Dialog
         identifiedResultForDialog?.let { result ->
             IdentifiedMusicDialog(
                 result = result,
@@ -344,7 +340,7 @@ private fun LiveRecordingCapsule(
         label = "pulseRingScale1"
     )
     val pulseRingAlpha1 by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
+        initialValue = 0.5f,
         targetValue = 0.0f,
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = LinearEasing),
@@ -363,7 +359,7 @@ private fun LiveRecordingCapsule(
         label = "pulseRingScale2"
     )
     val pulseRingAlpha2 by infiniteTransition.animateFloat(
-        initialValue = 0.7f,
+        initialValue = 0.6f,
         targetValue = 0.0f,
         animationSpec = infiniteRepeatable(
             animation = tween(800, easing = FastOutSlowInEasing),
@@ -371,14 +367,6 @@ private fun LiveRecordingCapsule(
         ),
         label = "pulseRingAlpha2"
     )
-
-    val softGreenFill = remember(theme) {
-        Color(0x2E10B981)
-    }
-
-    val softGreenBorder = remember(theme) {
-        Color(0x6634D399)
-    }
 
     val cardShape = RoundedCornerShape(28.dp)
 
@@ -389,14 +377,17 @@ private fun LiveRecordingCapsule(
                 scaleY = scale
             }
             .clip(cardShape)
-            .background(if (isHolding) softGreenFill.copy(alpha = 0.35f) else softGreenFill)
+            .background(
+                if (isHolding) theme.accentColor.copy(alpha = 0.15f)
+                else theme.glassFill
+            )
             .border(
                 width = 1.dp,
                 brush = Brush.horizontalGradient(
                     listOf(
-                        softGreenBorder,
-                        Color.White.copy(alpha = 0.25f),
-                        softGreenBorder
+                        theme.glassBorder,
+                        theme.accentColor.copy(alpha = if (isHolding) 0.5f else 0.2f),
+                        theme.glassBorder
                     )
                 ),
                 shape = cardShape
@@ -418,7 +409,6 @@ private fun LiveRecordingCapsule(
                             return@detectTapGestures
                         }
 
-                        // Start Audio Recording
                         val recFile = File(context.cacheDir, "live_sample_${System.currentTimeMillis()}.m4a")
                         currentRecordFile = recFile
                         recordStartTime = System.currentTimeMillis()
@@ -453,18 +443,15 @@ private fun LiveRecordingCapsule(
                             return@detectTapGestures
                         }
 
-                        // Wait for release
                         val released = tryAwaitRelease()
                         isHolding = false
 
                         val durationMs = System.currentTimeMillis() - recordStartTime
                         val recordedFile = currentRecordFile
 
-                        // Safely stop recorder
                         try {
                             activeRecorder?.stop()
                         } catch (e: Exception) {
-                            // If stopped too early, recorder throws
                         } finally {
                             activeRecorder?.release()
                             activeRecorder = null
@@ -496,7 +483,6 @@ private fun LiveRecordingCapsule(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Line 1: Status / Instruction Text
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -508,7 +494,7 @@ private fun LiveRecordingCapsule(
                         else -> "tap and hold to search"
                     },
                     color = when {
-                        isHolding -> Color(0xFF34D399)
+                        isHolding -> theme.accentColor
                         isSearching -> theme.accentColor
                         else -> theme.textColor
                     },
@@ -531,13 +517,10 @@ private fun LiveRecordingCapsule(
                 }
             }
 
-            // Line 2: Large Circular Mic Button with expanding ripple animation
             Box(
-                modifier = Modifier
-                    .size(110.dp),
+                modifier = Modifier.size(110.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Expanding ripple rings when holding
                 if (isHolding) {
                     Box(
                         modifier = Modifier
@@ -548,7 +531,7 @@ private fun LiveRecordingCapsule(
                                 alpha = pulseRingAlpha1
                             }
                             .clip(CircleShape)
-                            .background(Color(0xFF34D399))
+                            .background(theme.accentColor)
                     )
                     Box(
                         modifier = Modifier
@@ -559,11 +542,10 @@ private fun LiveRecordingCapsule(
                                 alpha = pulseRingAlpha2
                             }
                             .clip(CircleShape)
-                            .background(Color(0xFF10B981))
+                            .background(theme.accentColor)
                     )
                 }
 
-                // Main 84dp Center Circle
                 Box(
                     modifier = Modifier
                         .size(84.dp)
@@ -572,15 +554,15 @@ private fun LiveRecordingCapsule(
                             if (isHolding) {
                                 Brush.radialGradient(
                                     listOf(
-                                        Color(0xFF10B981),
-                                        Color(0xFF059669)
+                                        theme.accentColor,
+                                        theme.accentColor.copy(alpha = 0.8f)
                                     )
                                 )
                             } else {
                                 Brush.radialGradient(
                                     listOf(
-                                        Color(0x4D34D399),
-                                        Color(0x2610B981)
+                                        theme.accentColor.copy(alpha = 0.25f),
+                                        theme.accentColor.copy(alpha = 0.08f)
                                     )
                                 )
                             }
@@ -589,9 +571,9 @@ private fun LiveRecordingCapsule(
                             width = 1.5.dp,
                             brush = Brush.linearGradient(
                                 listOf(
-                                    Color(0xFF34D399),
-                                    Color.White.copy(alpha = 0.4f),
-                                    Color(0xFF059669)
+                                    theme.accentColor.copy(alpha = 0.8f),
+                                    Color.White.copy(alpha = 0.3f),
+                                    theme.accentColor.copy(alpha = 0.4f)
                                 )
                             ),
                             shape = CircleShape
@@ -600,7 +582,7 @@ private fun LiveRecordingCapsule(
                 ) {
                     if (isSearching) {
                         CircularProgressIndicator(
-                            color = Color(0xFF34D399),
+                            color = theme.accentColor,
                             modifier = Modifier.size(36.dp),
                             strokeWidth = 3.dp
                         )
@@ -608,7 +590,7 @@ private fun LiveRecordingCapsule(
                         Icon(
                             imageVector = Icons.Default.Mic,
                             contentDescription = "Search by Audio",
-                            tint = if (isHolding) Color.White else Color(0xFF34D399),
+                            tint = if (isHolding) Color.White else theme.accentColor,
                             modifier = Modifier.size(40.dp)
                         )
                     }
@@ -643,7 +625,6 @@ private fun FindMusicFromVideoCard(
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        // Capsule button "upload from gallery"
         CapsuleActionButton(
             text = if (isAnalyzing) "analyzing video..." else "upload from gallery",
             icon = if (isAnalyzing) Icons.Default.HourglassEmpty else Icons.Default.Upload,
@@ -688,7 +669,6 @@ private fun VideoToMusicCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Upload capsule button
             CapsuleActionButton(
                 text = if (isConverting) "converting..." else "upload",
                 icon = if (isConverting) Icons.Default.HourglassEmpty else Icons.Default.Upload,
@@ -699,7 +679,6 @@ private fun VideoToMusicCard(
                 testTag = "sound_tools_convert_upload_btn"
             )
 
-            // Arrow forward icon
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -711,14 +690,13 @@ private fun VideoToMusicCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Convert",
                     tint = if (hasConvertedFile) theme.accentColor else theme.accentColor.copy(alpha = 0.6f),
                     modifier = Modifier.size(20.dp)
                 )
             }
 
-            // Download capsule button
             CapsuleActionButton(
                 text = if (hasConvertedFile) "save track" else "download",
                 icon = if (hasConvertedFile) Icons.Default.CheckCircle else Icons.Default.Download,
@@ -807,10 +785,6 @@ private fun CapsuleActionButton(
     }
 }
 
-/**
- * Extracts the full audio track from a video Uri into an output .m4a file
- * without duration limitations.
- */
 private fun extractFullAudioFromVideoUri(
     context: Context,
     videoUri: Uri,
@@ -884,10 +858,6 @@ private fun extractFullAudioFromVideoUri(
     }
 }
 
-/**
- * Saves an extracted audio file directly into the device's public Music media collection
- * so it immediately appears in all media players and local scans.
- */
 private fun saveAudioFileToMusicLibrary(
     context: Context,
     sourceFile: File,
@@ -927,15 +897,11 @@ private fun saveAudioFileToMusicLibrary(
     }
 }
 
-/**
- * Extracts up to 10 seconds of audio track from a video Uri into an output .m4a file
- * using Android standard MediaExtractor and MediaMuxer without external dependencies.
- */
 private fun extractAudioFromVideoUri(
     context: Context,
     videoUri: Uri,
     outputFile: File,
-    maxDurationUs: Long = 10_000_000L // 10 seconds in microseconds
+    maxDurationUs: Long = 10_000_000L
 ): Boolean {
     val extractor = MediaExtractor()
     var muxer: MediaMuxer? = null

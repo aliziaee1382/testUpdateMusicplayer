@@ -68,7 +68,7 @@ fun GlassBackgroundContainer(
             initialValue = -0.08f,
             targetValue = 0.08f,
             animationSpec = infiniteRepeatable(
-                animation = tween(16000, easing = LinearEasing),
+                animation = tween(12300, easing = LinearEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "orb1X"
@@ -80,7 +80,7 @@ fun GlassBackgroundContainer(
             initialValue = -0.05f,
             targetValue = 0.05f,
             animationSpec = infiniteRepeatable(
-                animation = tween(18000, easing = LinearEasing),
+                animation = tween(13800, easing = LinearEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "orb1Y"
@@ -92,7 +92,7 @@ fun GlassBackgroundContainer(
             initialValue = 0.07f,
             targetValue = -0.07f,
             animationSpec = infiniteRepeatable(
-                animation = tween(20000, easing = LinearEasing),
+                animation = tween(15400, easing = LinearEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "orb2X"
@@ -104,7 +104,7 @@ fun GlassBackgroundContainer(
             initialValue = -0.06f,
             targetValue = 0.06f,
             animationSpec = infiniteRepeatable(
-                animation = tween(15000, easing = LinearEasing),
+                animation = tween(11500, easing = LinearEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "orb2Y"

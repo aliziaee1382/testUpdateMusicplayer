@@ -26,7 +26,6 @@ data class UserPreferencesEntity(
     val lastQueueTrackIds: String = "",
     val isAutoSystemTheme: Boolean = true,
     val listItemSize: String = "SMALL",
-    val isDynamicBgEnabled: Boolean = true,
     val hiddenFolders: String = ""
 ) {
     fun getHiddenFolderSet(): Set<String> {

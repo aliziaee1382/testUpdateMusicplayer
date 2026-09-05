@@ -43,6 +43,7 @@ import ir.ali0003.musicplayer.data.local.ScanProgress
 import ir.ali0003.musicplayer.model.AppUpdateInfo
 import ir.ali0003.musicplayer.model.EqualizerPreset
 import ir.ali0003.musicplayer.model.GlassTheme
+import ir.ali0003.musicplayer.model.ListItemSize
 import ir.ali0003.musicplayer.model.Playlist
 import ir.ali0003.musicplayer.model.Track
 import ir.ali0003.musicplayer.model.TrackSortCriterion
@@ -843,12 +844,16 @@ fun AddToPlaylistDialog(
     onDismiss: () -> Unit,
     theme: GlassTheme
 ) {
-    AnimatedGlassDialog(onDismissRequest = onDismiss) {
+    AnimatedGlassDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         GlassBox(
             theme = theme,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(horizontal = 20.dp, vertical = 24.dp)
+                .heightIn(max = 580.dp)
                 .testTag("add_to_playlist_dialog")
         ) {
             Row(
@@ -875,7 +880,9 @@ fun AddToPlaylistDialog(
             Text(
                 text = "${track.title} • ${track.artist}",
                 color = theme.accentColor,
-                fontSize = 13.sp
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -895,42 +902,68 @@ fun AddToPlaylistDialog(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                playlists.forEach { playlist ->
-                    GlassCard(
-                        onClick = {
-                            onAddToPlaylist(playlist.id)
-                            onDismiss()
-                        },
-                        theme = theme,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "select_playlist_${playlist.id}"
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+            if (playlists.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No playlists yet. Create one above!",
+                        color = theme.subtextColor,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(
+                        items = playlists,
+                        key = { it.id }
+                    ) { playlist ->
+                        GlassCard(
+                            onClick = {
+                                onAddToPlaylist(playlist.id)
+                                onDismiss()
+                            },
+                            theme = theme,
+                            modifier = Modifier.fillMaxWidth(),
+                            testTag = "select_playlist_${playlist.id}"
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.QueueMusic,
-                                contentDescription = null,
-                                tint = theme.accentColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = playlist.name,
-                                    color = theme.textColor,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QueueMusic,
+                                    contentDescription = null,
+                                    tint = theme.accentColor,
+                                    modifier = Modifier.size(24.dp)
                                 )
-                                Text(
-                                    text = "${playlist.songCount} songs",
-                                    color = theme.subtextColor,
-                                    fontSize = 12.sp
-                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = playlist.name,
+                                        color = theme.textColor,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "${playlist.songCount} songs",
+                                        color = theme.subtextColor,
+                                        fontSize = 12.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -949,12 +982,16 @@ fun MultiAddToPlaylistDialog(
     onDismiss: () -> Unit,
     theme: GlassTheme
 ) {
-    AnimatedGlassDialog(onDismissRequest = onDismiss) {
+    AnimatedGlassDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         GlassBox(
             theme = theme,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(horizontal = 20.dp, vertical = 24.dp)
+                .heightIn(max = 580.dp)
                 .testTag("multi_add_to_playlist_dialog")
         ) {
             Row(
@@ -1001,42 +1038,68 @@ fun MultiAddToPlaylistDialog(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                playlists.forEach { playlist ->
-                    GlassCard(
-                        onClick = {
-                            onAddToPlaylist(playlist.id)
-                            onDismiss()
-                        },
-                        theme = theme,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "multi_select_playlist_${playlist.id}"
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+            if (playlists.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No playlists yet. Create one above!",
+                        color = theme.subtextColor,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(
+                        items = playlists,
+                        key = { it.id }
+                    ) { playlist ->
+                        GlassCard(
+                            onClick = {
+                                onAddToPlaylist(playlist.id)
+                                onDismiss()
+                            },
+                            theme = theme,
+                            modifier = Modifier.fillMaxWidth(),
+                            testTag = "multi_select_playlist_${playlist.id}"
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.QueueMusic,
-                                contentDescription = null,
-                                tint = theme.accentColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = playlist.name,
-                                    color = theme.textColor,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QueueMusic,
+                                    contentDescription = null,
+                                    tint = theme.accentColor,
+                                    modifier = Modifier.size(24.dp)
                                 )
-                                Text(
-                                    text = "${playlist.songCount} songs",
-                                    color = theme.subtextColor,
-                                    fontSize = 12.sp
-                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = playlist.name,
+                                        color = theme.textColor,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "${playlist.songCount} songs",
+                                        color = theme.subtextColor,
+                                        fontSize = 12.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -2677,6 +2740,400 @@ fun UpdateAvailableDialog(
                         isHighlighted = true,
                         theme = theme,
                         testTag = "download_update_button"
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TrackCardDensityDialog(
+    currentSize: ListItemSize,
+    onSelectSize: (ListItemSize) -> Unit,
+    onDismiss: () -> Unit,
+    theme: GlassTheme
+) {
+    AnimatedGlassDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        GlassBox(
+            theme = theme,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(22.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(theme.accentColor.copy(alpha = 0.2f))
+                                .border(1.dp, theme.accentColor.copy(alpha = 0.35f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FormatSize,
+                                contentDescription = null,
+                                tint = theme.accentColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                text = "Track Card Density",
+                                color = theme.textColor,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Choose item size and layout density",
+                                color = theme.subtextColor,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    GlassIconButton(
+                        icon = Icons.Default.Close,
+                        contentDescription = "Close",
+                        onClick = onDismiss,
+                        theme = theme,
+                        size = 36.dp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Options
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ListItemSize.entries.forEach { size ->
+                        val isSelected = size == currentSize
+                        val title = when (size) {
+                            ListItemSize.SMALL -> "Compact (Small)"
+                            ListItemSize.MEDIUM -> "Balanced (Medium)"
+                            ListItemSize.LARGE -> "Expanded (Large)"
+                        }
+                        val desc = when (size) {
+                            ListItemSize.SMALL -> "52dp cover • Minimal height, shows more tracks"
+                            ListItemSize.MEDIUM -> "62dp cover • Standard balanced size & typography"
+                            ListItemSize.LARGE -> "74dp cover • Larger cover art & maximum readability"
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(
+                                    if (isSelected) theme.accentColor.copy(alpha = 0.16f)
+                                    else theme.textColor.copy(alpha = 0.05f)
+                                )
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 1.dp,
+                                    color = if (isSelected) theme.accentColor else theme.glassBorder,
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .clickable {
+                                    onSelectSize(size)
+                                    onDismiss()
+                                }
+                                .padding(14.dp)
+                                .testTag("density_option_${size.name.lowercase()}")
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    // Visual size indicator badge
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(
+                                                if (isSelected) theme.accentColor
+                                                else theme.textColor.copy(alpha = 0.1f)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "${size.coverSizeDp}",
+                                            color = if (isSelected) Color.White else theme.textColor,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = title,
+                                            color = if (isSelected) theme.accentColor else theme.textColor,
+                                            fontSize = 15.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = desc,
+                                            color = theme.subtextColor,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+
+                                if (isSelected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(26.dp)
+                                            .clip(CircleShape)
+                                            .background(theme.accentColor),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .border(1.5.dp, theme.textColor.copy(alpha = 0.2f), CircleShape)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Close", color = theme.subtextColor, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MusicDurationFilterDialog(
+    currentDurationSeconds: Int,
+    onApplyDuration: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    theme: GlassTheme
+) {
+    var tempDuration by remember(currentDurationSeconds) {
+        mutableStateOf(currentDurationSeconds.coerceIn(1, 100))
+    }
+
+    AnimatedGlassDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        GlassBox(
+            theme = theme,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(22.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(theme.accentColor.copy(alpha = 0.2f))
+                                .border(1.dp, theme.accentColor.copy(alpha = 0.35f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = null,
+                                tint = theme.accentColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                text = "Minimum Track Duration",
+                                color = theme.textColor,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Filter out voice notes & short audio clips",
+                                color = theme.subtextColor,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    GlassIconButton(
+                        icon = Icons.Default.Close,
+                        contentDescription = "Close",
+                        onClick = onDismiss,
+                        theme = theme,
+                        size = 36.dp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Hero display of current duration
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(theme.accentColor.copy(alpha = 0.12f))
+                        .border(1.dp, theme.accentColor.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                        .padding(vertical = 16.dp, horizontal = 20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${tempDuration}s",
+                            color = theme.accentColor,
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Tracks shorter than $tempDuration seconds will be hidden",
+                            color = theme.subtextColor,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Slider
+                GlassSlider(
+                    value = tempDuration.toFloat(),
+                    onValueChange = { newValue ->
+                        tempDuration = newValue.toInt().coerceIn(1, 100)
+                    },
+                    valueRange = 1f..100f,
+                    theme = theme,
+                    testTag = "dialog_duration_filter_slider"
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = "1s", color = theme.subtextColor, fontSize = 11.sp)
+                    Text(text = "50s", color = theme.subtextColor, fontSize = 11.sp)
+                    Text(text = "100s", color = theme.subtextColor, fontSize = 11.sp)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Quick Presets
+                Text(
+                    text = "QUICK PRESETS",
+                    color = theme.subtextColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(5, 15, 30, 60).forEach { preset ->
+                        val isPresetActive = tempDuration == preset
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (isPresetActive) theme.accentColor
+                                    else theme.textColor.copy(alpha = 0.08f)
+                                )
+                                .clickable { tempDuration = preset }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${preset}s",
+                                color = if (isPresetActive) Color.White else theme.textColor,
+                                fontSize = 12.sp,
+                                fontWeight = if (isPresetActive) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(22.dp))
+
+                // Action buttons: Cancel & Apply
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = theme.subtextColor, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    GlassButton(
+                        text = "Apply Filter",
+                        onClick = {
+                            onApplyDuration(tempDuration)
+                            onDismiss()
+                        },
+                        isHighlighted = true,
+                        theme = theme,
+                        testTag = "apply_duration_filter_button"
                     )
                 }
             }

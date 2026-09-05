@@ -203,12 +203,6 @@ class MusicRepository(private val dao: MusicDao) {
         }
     }
 
-    suspend fun updateDynamicBgPreference(enabled: Boolean) {
-        updatePreferences { current ->
-            current.copy(isDynamicBgEnabled = enabled)
-        }
-    }
-
     suspend fun hideFolder(folderName: String): Set<String> = withContext(Dispatchers.IO) {
         var resultSet = emptySet<String>()
         updatePreferences { current ->

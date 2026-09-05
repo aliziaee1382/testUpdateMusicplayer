@@ -259,7 +259,6 @@ fun GlassAudioApp(
     val eqBandGains by playerManager.eqBandGains.collectAsStateWithLifecycle()
     val minDurationFilterSeconds by viewModel.minDurationFilter.collectAsStateWithLifecycle()
     val listItemSize by viewModel.listItemSize.collectAsStateWithLifecycle()
-    val isDynamicBgEnabled by viewModel.isDynamicBgEnabled.collectAsStateWithLifecycle()
 
     val tracks by viewModel.allTracks.collectAsStateWithLifecycle()
     val hiddenTracks by viewModel.hiddenTracks.collectAsStateWithLifecycle()
@@ -329,7 +328,7 @@ fun GlassAudioApp(
 
     GlassBackgroundContainer(
         theme = currentTheme,
-        isAnimated = isDynamicBgEnabled,
+        isAnimated = true,
         modifier = Modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -463,8 +462,6 @@ fun GlassAudioApp(
                                 onMinDurationFilterChange = { viewModel.setMinDurationFilter(it) },
                                 listItemSize = listItemSize,
                                 onListItemSizeChange = { viewModel.setListItemSize(it) },
-                                isDynamicBgEnabled = isDynamicBgEnabled,
-                                onDynamicBgChange = { viewModel.setDynamicBgEnabled(it) },
                                 onOpenThemeSelector = { viewModel.setShowThemeSelector(true) },
                                 onOpenEqualizer = { viewModel.setShowEqualizer(true) },
                                 onScanLocalMusic = { permissionLauncher.launch(permissionsToRequest) },

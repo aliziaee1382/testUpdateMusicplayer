@@ -32,7 +32,8 @@ import ir.ali0003.musicplayer.model.GlassTheme
 import ir.ali0003.musicplayer.model.ListItemSize
 import ir.ali0003.musicplayer.ui.glass.GlassButton
 import ir.ali0003.musicplayer.ui.glass.GlassCard
-import ir.ali0003.musicplayer.ui.glass.GlassSlider
+import ir.ali0003.musicplayer.ui.glass.MusicDurationFilterDialog
+import ir.ali0003.musicplayer.ui.glass.TrackCardDensityDialog
 import ir.ali0003.musicplayer.ui.glass.UpdateAvailableDialog
 import ir.ali0003.musicplayer.ui.glass.UpdateCheckingDialog
 import kotlinx.coroutines.Dispatchers
@@ -46,8 +47,6 @@ fun SettingsScreen(
     onMinDurationFilterChange: (Int) -> Unit = {},
     listItemSize: ListItemSize = ListItemSize.SMALL,
     onListItemSizeChange: (ListItemSize) -> Unit = {},
-    isDynamicBgEnabled: Boolean = true,
-    onDynamicBgChange: (Boolean) -> Unit = {},
     onOpenThemeSelector: () -> Unit,
     onOpenEqualizer: () -> Unit,
     onScanLocalMusic: (() -> Unit)? = null,
@@ -61,6 +60,8 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var availableUpdateInfo by remember { mutableStateOf<AppUpdateInfo?>(null) }
+    var showCardDensityDialog by remember { mutableStateOf(false) }
+    var showDurationFilterDialog by remember { mutableStateOf(false) }
 
     val (versionName, versionCode) = remember(context) {
         try {
@@ -257,65 +258,6 @@ fun SettingsScreen(
                         )
                     }
                 }
-
-                GlassCard(
-                    onClick = { onDynamicBgChange(!isDynamicBgEnabled) },
-                    theme = theme,
-                    modifier = Modifier.fillMaxWidth(),
-                    testTag = "settings_dynamic_bg_card"
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape)
-                                    .background(theme.accentColor.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = theme.accentColor,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column {
-                                Text(
-                                    text = "Animated Background",
-                                    color = theme.textColor,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = "Enable smooth ambient background motion",
-                                    color = theme.subtextColor,
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
-                        Switch(
-                            checked = isDynamicBgEnabled,
-                            onCheckedChange = { onDynamicBgChange(it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = theme.accentColor,
-                                uncheckedThumbColor = theme.subtextColor,
-                                uncheckedTrackColor = theme.textColor.copy(alpha = 0.1f)
-                            )
-                        )
-                    }
-                }
             }
         }
 
@@ -331,17 +273,22 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             GlassCard(
-                onClick = {},
+                onClick = { showCardDensityDialog = true },
                 theme = theme,
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "list_item_density_card"
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(18.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(42.dp)
@@ -365,45 +312,18 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Current: ${listItemSize.labelEn} • Cover ${listItemSize.coverSizeDp}dp",
-                                color = theme.subtextColor,
-                                fontSize = 12.sp
+                                text = "${listItemSize.labelEn} • Cover ${listItemSize.coverSizeDp}dp",
+                                color = theme.accentColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(theme.textColor.copy(alpha = 0.08f))
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        ListItemSize.entries.forEach { size ->
-                            val isSelected = listItemSize == size
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (isSelected) theme.accentColor else Color.Transparent
-                                    )
-                                    .clickable { onListItemSizeChange(size) }
-                                    .padding(vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = size.labelEn,
-                                    color = if (isSelected) Color.White else theme.textColor,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = "Select Density",
+                        tint = theme.subtextColor
+                    )
                 }
             }
         }
@@ -486,79 +406,73 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             GlassCard(
-                onClick = {},
+                onClick = { showDurationFilterDialog = true },
                 theme = theme,
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "music_duration_filter_card"
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(18.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(theme.accentColor.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.FilterList,
                                 contentDescription = null,
                                 tint = theme.accentColor,
                                 modifier = Modifier.size(24.dp)
                             )
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column {
-                                Text(
-                                    text = "Minimum Track Duration",
-                                    color = theme.textColor,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = if (minDurationFilterSeconds > 0)
-                                        "Filter tracks shorter than $minDurationFilterSeconds seconds"
-                                    else
-                                        "No duration filter applied",
-                                    color = theme.subtextColor,
-                                    fontSize = 12.sp
-                                )
-                            }
                         }
-                        Text(
-                            text = "${minDurationFilterSeconds}s",
-                            color = theme.accentColor,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                text = "Minimum Track Duration",
+                                color = theme.textColor,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = if (minDurationFilterSeconds > 0)
+                                    "Filter tracks shorter than $minDurationFilterSeconds seconds"
+                                else
+                                    "No duration filter applied",
+                                color = theme.subtextColor,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    GlassSlider(
-                        value = minDurationFilterSeconds.toFloat(),
-                        onValueChange = { newValue ->
-                            onMinDurationFilterChange(newValue.toInt().coerceIn(1, 100))
-                        },
-                        valueRange = 1f..100f,
-                        theme = theme,
-                        testTag = "duration_filter_slider"
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "1s",
-                            color = theme.subtextColor,
-                            fontSize = 11.sp
-                        )
-                        Text(
-                            text = "100s",
-                            color = theme.subtextColor,
-                            fontSize = 11.sp
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(theme.accentColor.copy(alpha = 0.15f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "${minDurationFilterSeconds}s",
+                                color = theme.accentColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Adjust Filter",
+                            tint = theme.subtextColor
                         )
                     }
                 }
@@ -834,6 +748,57 @@ fun SettingsScreen(
             }
         }
 
+        // Telegram Channel Button
+        item {
+            val telegramUrl = "https://t.me/application0003"
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(theme.glassFill)
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                theme.glassBorder,
+                                theme.accentColor.copy(alpha = 0.3f),
+                                theme.glassBorder
+                            )
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(color = theme.accentColor)
+                    ) {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(telegramUrl)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Could not open browser.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .testTag("settings_telegram_channel_btn"),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "مشاهده کانال تلگرام",
+                        color = theme.textColor,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
         // Dynamic Version Footer
         item {
             Text(
@@ -847,6 +812,24 @@ fun SettingsScreen(
                     .padding(bottom = 24.dp)
             )
         }
+    }
+
+    if (showCardDensityDialog) {
+        TrackCardDensityDialog(
+            currentSize = listItemSize,
+            onSelectSize = onListItemSizeChange,
+            onDismiss = { showCardDensityDialog = false },
+            theme = theme
+        )
+    }
+
+    if (showDurationFilterDialog) {
+        MusicDurationFilterDialog(
+            currentDurationSeconds = minDurationFilterSeconds,
+            onApplyDuration = onMinDurationFilterChange,
+            onDismiss = { showDurationFilterDialog = false },
+            theme = theme
+        )
     }
 
     if (isCheckingUpdate) {

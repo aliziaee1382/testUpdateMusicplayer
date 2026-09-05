@@ -89,7 +89,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val sortOrder: StateFlow<TrackSortOrder>
     val isAutoSystemTheme: StateFlow<Boolean>
     val listItemSize: StateFlow<ListItemSize>
-    val isDynamicBgEnabled: StateFlow<Boolean>
     val audioFolders: StateFlow<List<AudioFolder>>
 
     private val _editingTrack = MutableStateFlow<Track?>(null)
@@ -160,14 +159,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 viewModelScope,
                 SharingStarted.WhileSubscribed(5000),
                 ListItemSize.SMALL
-            )
-
-        isDynamicBgEnabled = userPrefsFlow
-            .map { it.isDynamicBgEnabled }
-            .stateIn(
-                viewModelScope,
-                SharingStarted.WhileSubscribed(5000),
-                true
             )
 
         hiddenFolders = repository.hiddenFolders.stateIn(
@@ -800,12 +791,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setListItemSize(size: ListItemSize) {
         viewModelScope.launch {
             repository.updateListItemSize(size)
-        }
-    }
-
-    fun setDynamicBgEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            repository.updateDynamicBgPreference(enabled)
         }
     }
 

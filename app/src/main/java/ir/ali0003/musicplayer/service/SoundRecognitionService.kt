@@ -19,7 +19,7 @@ sealed class RecognitionResponse {
 }
 
 object SoundRecognitionService {
-    private const val RECOGNIZE_URL = "https://ali0003.s14.telviprobot.top/api/recognize.php"
+    private const val RECOGNIZE_URL = "https://chat0003/API/recognize.php"
 
     private val client by lazy {
         OkHttpClient.Builder()

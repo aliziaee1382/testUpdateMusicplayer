@@ -15,8 +15,8 @@ android {
         applicationId = "ir.ali0003.musicplayer.myskla"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "2.0.0"
+        versionCode = 5
+        versionName = "2.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

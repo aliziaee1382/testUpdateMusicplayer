@@ -92,6 +92,10 @@ class MediaPlaybackService : Service() {
             }
             context.stopService(intent)
         }
+
+        fun updateTrackPlaybackStats(trackId: Long, timestamp: Long = System.currentTimeMillis()) {
+            AudioPlayerManager.activeInstance?.recordPlaybackStats(trackId, timestamp)
+        }
     }
 
     override fun onCreate() {

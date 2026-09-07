@@ -417,6 +417,23 @@ class AudioPlayerManager(private val context: Context) {
     private var lastFlushTimeMs: Long = 0L
     var onFlushListeningTimeListener: ((trackId: Long, seconds: Long) -> Unit)? = null
     var onPlaybackStateChanged: ((trackId: Long, positionMs: Long, queueTrackIds: List<Long>) -> Unit)? = null
+    var onTrackPlaybackStatsListener: ((trackId: Long, timestamp: Long) -> Unit)? = null
+
+    fun recordPlaybackStats(trackId: Long, timestamp: Long = System.currentTimeMillis()) {
+        val listener = onTrackPlaybackStatsListener
+        if (listener != null) {
+            listener.invoke(trackId, timestamp)
+        } else {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val dao = ir.ali0003.musicplayer.data.local.AppDatabase.getDatabase(context).musicDao()
+                    dao.updateTrackPlaybackStats(trackId, timestamp)
+                } catch (e: Exception) {
+                    Log.e("AudioPlayerManager", "Failed to update playback stats in DB", e)
+                }
+            }
+        }
+    }
 
     fun triggerPlaybackStateSave() {
         val trackId = _currentTrack.value?.id ?: return
@@ -502,6 +519,7 @@ class AudioPlayerManager(private val context: Context) {
             setupEqualizer(player.audioSessionId)
             updateServiceNotification()
             triggerPlaybackStateSave()
+            recordPlaybackStats(track.id)
         } catch (e: Exception) {
             Log.e("AudioPlayerManager", "Failed to prepare ExoPlayer for track: ${track.title}", e)
             _isPlaying.value = false

@@ -39,6 +39,8 @@ class MusicRepository(private val dao: MusicDao) {
         entities.map { it.toTrack() }
     }
 
+    val mostPlayed: Flow<List<Track>> = mostPlayedPlaylistTracks
+
     val allPlaylists: Flow<List<Playlist>> = combine(
         dao.getAllPlaylists(),
         recentlyPlayedPlaylistTracks,
@@ -113,8 +115,12 @@ class MusicRepository(private val dao: MusicDao) {
         dao.deleteTrack(trackId)
     }
 
-    suspend fun recordPlayed(trackId: Long) = withContext(Dispatchers.IO) {
-        dao.recordTrackPlayed(trackId, System.currentTimeMillis())
+    suspend fun updateTrackPlaybackStats(trackId: Long, timestamp: Long = System.currentTimeMillis()) = withContext(Dispatchers.IO) {
+        dao.updateTrackPlaybackStats(trackId, timestamp)
+    }
+
+    suspend fun recordPlayed(trackId: Long, timestamp: Long = System.currentTimeMillis()) = withContext(Dispatchers.IO) {
+        dao.recordTrackPlayed(trackId, timestamp)
     }
 
     suspend fun addListeningTime(trackId: Long, seconds: Long) = withContext(Dispatchers.IO) {

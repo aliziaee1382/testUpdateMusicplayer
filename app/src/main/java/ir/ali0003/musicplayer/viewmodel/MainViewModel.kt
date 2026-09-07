@@ -81,6 +81,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val hiddenTracks: StateFlow<List<Track>>
     val favoriteTracks: StateFlow<List<Track>>
     val recentlyPlayed: StateFlow<List<Track>>
+    val mostPlayed: StateFlow<List<Track>>
     val allPlaylists: StateFlow<List<Playlist>>
     val selectedPlaylistTracks: StateFlow<List<Track>>
     val sampleFolders: List<AudioFolder>
@@ -128,6 +129,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             viewModelScope.launch {
                 repository.updatePlaybackState(trackId, posMs, queueIds.joinToString(","))
             }
+        }
+        playerManager.onTrackPlaybackStatsListener = { trackId, timestamp ->
+            updateTrackPlaybackStats(trackId, timestamp)
         }
         sampleFolders = repository.getSampleFolders()
 
@@ -242,7 +246,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             emptyList()
         )
 
-        allPlaylists = repository.allPlaylists.stateIn(
+        mostPlayed = combine(repository.mostPlayedPlaylistTracks, minDurationFilter, repository.hiddenFolders) { tracks, minSecs, hiddenSet ->
+            var list = tracks
+            if (minSecs > 0) {
+                list = list.filter { it.durationSeconds >= minSecs }
+            }
+            if (hiddenSet.isNotEmpty()) {
+                list = list.filter { track -> !isTrackInHiddenFolders(track, hiddenSet) }
+            }
+            list
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyList()
+        )
+
+        allPlaylists = combine(
+            repository.allPlaylists,
+            recentlyPlayed,
+            mostPlayed
+        ) { playlists, recentList, mostList ->
+            playlists.map { pl ->
+                when (pl.id) {
+                    Playlist.ID_RECENTLY_PLAYED -> pl.copy(songCount = recentList.size)
+                    Playlist.ID_MOST_PLAYED -> pl.copy(songCount = mostList.size)
+                    else -> pl
+                }
+            }
+        }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
             emptyList()
@@ -440,17 +471,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _targetTrackForPlaylist.value = track
     }
 
+    // Playback Stats
+    fun updateTrackPlaybackStats(trackId: Long, timestamp: Long = System.currentTimeMillis()) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateTrackPlaybackStats(trackId, timestamp)
+        }
+    }
+
     // Player Actions
     fun playShuffleAll(currentContextList: List<Track>? = null) {
         val tracks = if (!currentContextList.isNullOrEmpty()) currentContextList else allTracks.value
         if (tracks.isEmpty()) return
         playerManager.setShuffle(true)
         val randomIndex = tracks.indices.random()
-        val selectedTrack = tracks[randomIndex]
         playerManager.setQueue(tracks, randomIndex)
-        viewModelScope.launch {
-            repository.recordPlayed(selectedTrack.id)
-        }
     }
 
     fun playTrack(track: Track, currentContextList: List<Track>? = null) {
@@ -461,9 +495,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             val fallbackIndex = allTracks.value.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
             playerManager.setQueue(allTracks.value, fallbackIndex)
-        }
-        viewModelScope.launch {
-            repository.recordPlayed(track.id)
         }
     }
 
@@ -746,9 +777,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun playPlaylistQueue(tracks: List<Track>, startIndex: Int = 0) {
         if (tracks.isEmpty()) return
         playerManager.setQueue(tracks, startIndex)
-        viewModelScope.launch {
-            repository.recordPlayed(tracks[startIndex].id)
-        }
     }
 
     fun selectTheme(theme: GlassTheme, isAutoSystemTheme: Boolean = false) {

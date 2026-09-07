@@ -14,7 +14,7 @@ interface MusicDao {
     @Query("SELECT * FROM tracks WHERE isFavorite = 1 AND isHidden = 0 ORDER BY title ASC")
     fun getFavoriteTracks(): Flow<List<TrackEntity>>
 
-    @Query("SELECT * FROM tracks WHERE lastPlayedTimestamp > 0 AND isHidden = 0 ORDER BY lastPlayedTimestamp DESC LIMIT 20")
+    @Query("SELECT * FROM tracks WHERE lastPlayedTimestamp > 0 AND isHidden = 0 ORDER BY lastPlayedTimestamp DESC LIMIT 100")
     fun getRecentlyPlayedTracks(): Flow<List<TrackEntity>>
 
     @Query("SELECT * FROM tracks WHERE lastPlayedTimestamp > 0 AND isHidden = 0 ORDER BY lastPlayedTimestamp DESC LIMIT 100")
@@ -55,6 +55,9 @@ interface MusicDao {
 
     @Query("DELETE FROM playlist_track_cross_ref WHERE trackId = :trackId")
     suspend fun deleteTrackFromCrossRefs(trackId: Long)
+
+    @Query("UPDATE tracks SET lastPlayedTimestamp = :timestamp, playCount = playCount + 1 WHERE id = :trackId")
+    suspend fun updateTrackPlaybackStats(trackId: Long, timestamp: Long)
 
     @Query("UPDATE tracks SET lastPlayedTimestamp = :timestamp, playCount = playCount + 1 WHERE id = :trackId")
     suspend fun recordTrackPlayed(trackId: Long, timestamp: Long)

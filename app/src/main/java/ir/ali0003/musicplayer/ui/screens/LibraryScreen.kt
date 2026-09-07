@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import ir.ali0003.musicplayer.model.AudioFolder
 import ir.ali0003.musicplayer.model.GlassTheme
@@ -220,24 +222,29 @@ private fun PlaylistsTabContent(
     bottomOffset: Dp = 130.dp,
     scrollToTopTrigger: Int = 0
 ) {
-    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger > 0) {
-            listState.animateScrollToItem(0)
+            gridState.animateScrollToItem(0)
         }
     }
 
-    LazyColumn(
-        state = listState,
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Fixed(2),
         modifier = Modifier
             .fillMaxSize()
             .padding(bottom = bottomOffset)
             .clipToBounds(),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Essential "Create New Playlist" card
-        item {
+        // Essential "Create New Playlist" card spanning both columns at the top
+        item(
+            span = { GridItemSpan(2) },
+            key = "create_new_playlist_header"
+        ) {
             GlassCard(
                 onClick = onOpenCreatePlaylist,
                 theme = theme,
@@ -283,8 +290,16 @@ private fun PlaylistsTabContent(
             }
         }
 
-        items(playlists, key = { it.id }) { playlist ->
-            var showMenu by remember { mutableStateOf(false) }
+        items(
+            items = playlists,
+            key = { it.id }
+        ) { playlist ->
+            val playlistIcon = when (playlist.id) {
+                Playlist.ID_FAVORITES -> Icons.Default.Favorite
+                Playlist.ID_MOST_PLAYED -> Icons.Default.LocalFireDepartment
+                Playlist.ID_RECENTLY_PLAYED -> Icons.Default.History
+                else -> Icons.Default.MusicNote
+            }
 
             GlassCard(
                 onClick = { onSelectPlaylist?.invoke(playlist) },
@@ -292,95 +307,41 @@ private fun PlaylistsTabContent(
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "playlist_item_${playlist.id}"
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     GlassArtworkCard(
                         gradientIndex = playlist.coverGradientIndex,
                         isPlaying = false,
                         theme = theme,
-                        modifier = Modifier.size(56.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.size(80.dp),
+                        fallbackIcon = playlistIcon
                     )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = playlist.name,
-                            color = theme.textColor,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "${playlist.songCount} Tracks",
-                            color = theme.accentColor,
-                            fontSize = 13.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    Box {
-                        GlassIconButton(
-                            icon = Icons.Default.MoreVert,
-                            contentDescription = "Playlist Options",
-                            onClick = { showMenu = true },
-                            theme = theme,
-                            size = 36.dp,
-                            testTag = "playlist_menu_btn_${playlist.id}"
-                        )
-
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false },
-                            modifier = Modifier
-                                .background(theme.glassFill)
-                                .border(1.dp, theme.accentColor.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                        ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.Edit,
-                                            contentDescription = null,
-                                            tint = theme.textColor,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Edit Tracks", color = theme.textColor, fontSize = 14.sp)
-                                    }
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onEditPlaylist?.invoke(playlist)
-                                }
-                            )
-
-                            if (!playlist.isSystemPlaylist) {
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Default.Delete,
-                                                contentDescription = null,
-                                                tint = Color(0xFFEF4444),
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Delete Playlist", color = Color(0xFFEF4444), fontSize = 14.sp)
-                                        }
-                                    },
-                                    onClick = {
-                                        showMenu = false
-                                        onDeletePlaylist?.invoke(playlist.id)
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = playlist.name,
+                        color = theme.textColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${playlist.songCount} Tracks",
+                        color = theme.accentColor,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }

@@ -344,7 +344,8 @@ fun GlassButton(
                 text = text,
                 color = if (isHighlighted) Color.White else theme.textColor,
                 fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
             )
         }
     }
@@ -469,7 +470,8 @@ fun GlassArtworkCard(
     shape: Shape = RoundedCornerShape(14.dp),
     titleText: String = "",
     subtitleText: String = "",
-    targetSize: Int = 128
+    targetSize: Int = 128,
+    fallbackIcon: ImageVector = Icons.Default.MusicNote
 ) {
     var isImageError by remember(imageUrl) { mutableStateOf(false) }
     val hasImage = !imageUrl.isNullOrEmpty() && !isImageError
@@ -543,9 +545,9 @@ fun GlassArtworkCard(
                     .background(brush = GLASS_SHEEN_BRUSH)
             )
         } else {
-            // Centered simple music note icon on solid matte background
+            // Centered icon on solid matte background
             Icon(
-                imageVector = Icons.Default.MusicNote,
+                imageVector = fallbackIcon,
                 contentDescription = null,
                 tint = theme.accentColor,
                 modifier = Modifier.fillMaxSize(0.42f)

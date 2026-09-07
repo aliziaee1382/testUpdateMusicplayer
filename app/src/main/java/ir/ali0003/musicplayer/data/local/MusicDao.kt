@@ -17,6 +17,12 @@ interface MusicDao {
     @Query("SELECT * FROM tracks WHERE lastPlayedTimestamp > 0 AND isHidden = 0 ORDER BY lastPlayedTimestamp DESC LIMIT 20")
     fun getRecentlyPlayedTracks(): Flow<List<TrackEntity>>
 
+    @Query("SELECT * FROM tracks WHERE lastPlayedTimestamp > 0 AND isHidden = 0 ORDER BY lastPlayedTimestamp DESC LIMIT 100")
+    fun getRecentlyPlayedPlaylistTracks(): Flow<List<TrackEntity>>
+
+    @Query("SELECT * FROM tracks WHERE playCount > 0 AND isHidden = 0 ORDER BY playCount DESC, lastPlayedTimestamp DESC LIMIT 100")
+    fun getMostPlayedTracks(): Flow<List<TrackEntity>>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertTracks(tracks: List<TrackEntity>)
 

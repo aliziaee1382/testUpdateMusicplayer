@@ -5,6 +5,7 @@ import ir.ali0003.musicplayer.model.Playlist
 import ir.ali0003.musicplayer.model.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -30,8 +31,51 @@ class MusicRepository(private val dao: MusicDao) {
         entities.map { it.toTrack() }
     }
 
-    val allPlaylists: Flow<List<Playlist>> = dao.getAllPlaylists().map { entities ->
-        entities.map { it.toPlaylist() }
+    val recentlyPlayedPlaylistTracks: Flow<List<Track>> = dao.getRecentlyPlayedPlaylistTracks().map { entities ->
+        entities.map { it.toTrack() }
+    }
+
+    val mostPlayedPlaylistTracks: Flow<List<Track>> = dao.getMostPlayedTracks().map { entities ->
+        entities.map { it.toTrack() }
+    }
+
+    val allPlaylists: Flow<List<Playlist>> = combine(
+        dao.getAllPlaylists(),
+        recentlyPlayedPlaylistTracks,
+        mostPlayedPlaylistTracks
+    ) { dbPlaylists, recentList, mostList ->
+        val result = mutableListOf<Playlist>()
+        
+        // Add DB playlists (such as Favorites)
+        val mappedDb = dbPlaylists.map { it.toPlaylist() }
+        val favorites = mappedDb.firstOrNull { it.id == Playlist.ID_FAVORITES }
+        if (favorites != null) {
+            result.add(favorites)
+        }
+
+        // Add Smart Playlists
+        result.add(
+            Playlist(
+                id = Playlist.ID_RECENTLY_PLAYED,
+                name = "Recently Played",
+                songCount = recentList.size,
+                coverGradientIndex = 1,
+                isSystemPlaylist = true
+            )
+        )
+        result.add(
+            Playlist(
+                id = Playlist.ID_MOST_PLAYED,
+                name = "Most Played",
+                songCount = mostList.size,
+                coverGradientIndex = 2,
+                isSystemPlaylist = true
+            )
+        )
+
+        // Add remaining user custom playlists
+        result.addAll(mappedDb.filter { it.id != Playlist.ID_FAVORITES })
+        result
     }
 
     val userPreferences: Flow<UserPreferencesEntity?> = dao.getUserPreferences()
@@ -110,10 +154,11 @@ class MusicRepository(private val dao: MusicDao) {
     }
 
     fun getTracksForPlaylist(playlistId: Long): Flow<List<Track>> {
-        return if (playlistId == 1L) {
-            favoriteTracks
-        } else {
-            dao.getTracksForPlaylist(playlistId).map { entities -> entities.map { it.toTrack() } }
+        return when (playlistId) {
+            Playlist.ID_FAVORITES -> favoriteTracks
+            Playlist.ID_RECENTLY_PLAYED -> recentlyPlayedPlaylistTracks
+            Playlist.ID_MOST_PLAYED -> mostPlayedPlaylistTracks
+            else -> dao.getTracksForPlaylist(playlistId).map { entities -> entities.map { it.toTrack() } }
         }
     }
 

@@ -58,7 +58,7 @@ import ir.ali0003.musicplayer.R
 @Composable
 fun AnimatedGlassDialog(
     onDismissRequest: () -> Unit,
-    properties: DialogProperties = DialogProperties(),
+    properties: DialogProperties = DialogProperties(usePlatformDefaultWidth = false),
     content: @Composable () -> Unit
 ) {
     var animateIn by remember { mutableStateOf(false) }
@@ -86,6 +86,8 @@ fun AnimatedGlassDialog(
     ) {
         Box(
             modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight()
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
@@ -119,7 +121,7 @@ fun EqualizerDialog(
             theme = theme,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(horizontal = 16.dp, vertical = 20.dp)
                 .testTag("equalizer_dialog")
         ) {
             Row(
@@ -280,7 +282,7 @@ fun SleepTimerDialog(
             theme = theme,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(horizontal = 16.dp, vertical = 20.dp)
                 .testTag("sleep_timer_dialog")
         ) {
             Row(
@@ -844,6 +846,10 @@ fun AddToPlaylistDialog(
     onDismiss: () -> Unit,
     theme: GlassTheme
 ) {
+    val eligiblePlaylists = remember(playlists) {
+        playlists.filter { !it.isSmartPlaylist }
+    }
+
     AnimatedGlassDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -902,7 +908,7 @@ fun AddToPlaylistDialog(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (playlists.isEmpty()) {
+            if (eligiblePlaylists.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -924,7 +930,7 @@ fun AddToPlaylistDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(
-                        items = playlists,
+                        items = eligiblePlaylists,
                         key = { it.id }
                     ) { playlist ->
                         GlassCard(
@@ -982,6 +988,10 @@ fun MultiAddToPlaylistDialog(
     onDismiss: () -> Unit,
     theme: GlassTheme
 ) {
+    val eligiblePlaylists = remember(playlists) {
+        playlists.filter { !it.isSmartPlaylist }
+    }
+
     AnimatedGlassDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -1038,7 +1048,7 @@ fun MultiAddToPlaylistDialog(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (playlists.isEmpty()) {
+            if (eligiblePlaylists.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1060,7 +1070,7 @@ fun MultiAddToPlaylistDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(
-                        items = playlists,
+                        items = eligiblePlaylists,
                         key = { it.id }
                     ) { playlist ->
                         GlassCard(
@@ -1133,7 +1143,7 @@ fun PlaylistDetailsDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 580.dp)
-                .padding(8.dp)
+                .padding(horizontal = 16.dp, vertical = 20.dp)
                 .testTag("playlist_details_dialog")
         ) {
             Row(
@@ -1145,11 +1155,19 @@ fun PlaylistDetailsDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
+                    val playlistIcon = when (playlist.id) {
+                        Playlist.ID_FAVORITES -> Icons.Default.Favorite
+                        Playlist.ID_MOST_PLAYED -> Icons.Default.LocalFireDepartment
+                        Playlist.ID_RECENTLY_PLAYED -> Icons.Default.History
+                        else -> Icons.Default.MusicNote
+                    }
+
                     GlassArtworkCard(
                         gradientIndex = playlist.coverGradientIndex,
                         isPlaying = false,
                         theme = theme,
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier.size(44.dp),
+                        fallbackIcon = playlistIcon
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -1170,55 +1188,57 @@ fun PlaylistDetailsDialog(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box {
-                        GlassIconButton(
-                            icon = Icons.Default.MoreVert,
-                            contentDescription = "Options",
-                            onClick = { showMenu = true },
-                            theme = theme,
-                            size = 36.dp,
-                            testTag = "playlist_details_menu_btn"
-                        )
+                    if (!playlist.isSmartPlaylist) {
+                        Box {
+                            GlassIconButton(
+                                icon = Icons.Default.MoreVert,
+                                contentDescription = "Options",
+                                onClick = { showMenu = true },
+                                theme = theme,
+                                size = 36.dp,
+                                testTag = "playlist_details_menu_btn"
+                            )
 
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false },
-                            modifier = Modifier
-                                .background(theme.glassFill)
-                                .border(1.dp, theme.accentColor.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                        ) {
-                            if (tracks.isNotEmpty()) {
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Edit, contentDescription = null, tint = theme.textColor, modifier = Modifier.size(18.dp))
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(if (isEditMode) "Exit Edit Mode" else "Edit Tracks", color = theme.textColor, fontSize = 14.sp)
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                modifier = Modifier
+                                    .background(theme.glassFill)
+                                    .border(1.dp, theme.accentColor.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                            ) {
+                                if (tracks.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Edit, contentDescription = null, tint = theme.textColor, modifier = Modifier.size(18.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(if (isEditMode) "Exit Edit Mode" else "Edit Tracks", color = theme.textColor, fontSize = 14.sp)
+                                            }
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            isEditMode = !isEditMode
+                                            if (!isEditMode) selectedTrackIds.clear()
                                         }
-                                    },
-                                    onClick = {
-                                        showMenu = false
-                                        isEditMode = !isEditMode
-                                        if (!isEditMode) selectedTrackIds.clear()
-                                    }
-                                )
-                            }
+                                    )
+                                }
 
-                            if (!playlist.isSystemPlaylist) {
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Delete Playlist", color = Color(0xFFEF4444), fontSize = 14.sp)
+                                if (!playlist.isSystemPlaylist) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Delete Playlist", color = Color(0xFFEF4444), fontSize = 14.sp)
+                                            }
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            onDeletePlaylist?.invoke(playlist.id)
+                                            onDismiss()
                                         }
-                                    },
-                                    onClick = {
-                                        showMenu = false
-                                        onDeletePlaylist?.invoke(playlist.id)
-                                        onDismiss()
-                                    }
-                                )
+                                    )
+                                }
                             }
                         }
                     }
@@ -1261,7 +1281,10 @@ fun PlaylistDetailsDialog(
                         )
                     }
 
-                    Row {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         if (selectedTrackIds.isNotEmpty()) {
                             GlassButton(
                                 text = "Delete (${selectedTrackIds.size})",
@@ -1275,7 +1298,6 @@ fun PlaylistDetailsDialog(
                                 theme = theme,
                                 testTag = "delete_selected_tracks_btn"
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
                         }
 
                         GlassButton(
@@ -1409,7 +1431,7 @@ fun PlaylistDetailsDialog(
                                             size = 30.dp
                                         )
 
-                                        if (!playlist.isSystemPlaylist) {
+                                        if (playlist.isEditable) {
                                             Spacer(modifier = Modifier.width(4.dp))
                                             GlassIconButton(
                                                 icon = Icons.Default.DeleteOutline,

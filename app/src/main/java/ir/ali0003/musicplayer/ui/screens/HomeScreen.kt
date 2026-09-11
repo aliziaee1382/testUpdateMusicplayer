@@ -430,7 +430,7 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "${sortedTracks.size} tracks • ${sortCriterion.labelEn} (${sortOrder.labelEn})",
+                                text = "${sortedTracks.size} tracks",
                                 color = theme.accentColor,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium

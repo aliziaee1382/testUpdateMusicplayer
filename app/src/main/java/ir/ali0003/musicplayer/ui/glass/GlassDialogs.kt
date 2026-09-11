@@ -86,21 +86,34 @@ fun AnimatedGlassDialog(
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .wrapContentHeight()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    this.alpha = alpha
-                }
+                .fillMaxSize()
                 .clickable(
                     enabled = true,
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
-                    onClick = {}
-                )
+                    onClick = onDismissRequest
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            content()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .wrapContentHeight()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        this.alpha = alpha
+                    }
+                    .clickable(
+                        enabled = true,
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = {}
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                content()
+            }
         }
     }
 }
@@ -2225,8 +2238,8 @@ fun ScanningMusicDialog(
         GlassBox(
             theme = theme,
             modifier = Modifier
-                .fillMaxWidth(0.88f)
-                .padding(16.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 20.dp)
                 .testTag("scanning_music_dialog")
         ) {
             Column(
@@ -2560,8 +2573,8 @@ fun UpdateCheckingDialog(
         GlassBox(
             theme = theme,
             modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .padding(8.dp),
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 20.dp),
             shape = RoundedCornerShape(24.dp)
         ) {
             Column(
